@@ -24,35 +24,6 @@ def request_token(logger, settings, params):
         raise Exception(str(e))
     return access_token
 
-# def install_handler(logger, settings, event, context):
-#     query_params = event['queryStringParameters']
-#     shop = query_params.get('shop')
-#     code = query_params.get('code')
-#     hmac = query_params.get('hmac')
-
-#     if not shop or not code:
-#         return {"statusCode": 400, "body": "Missing shop or code"}
-
-#     # Setup Shopify session
-#     shopify.Session.setup(api_key=SHOPIFY_API_KEY, secret=SHOPIFY_API_SECRET)
-#     session = shopify.Session(shop, "2025-01")  # use current API version
-
-#     # Exchange code for access token
-#     try:
-#         access_token = session.request_token(query_params)
-#     except Exception as e:
-#         return {"statusCode": 500, "body": str(e)}
-
-#     # Store access_token securely
-#     return {
-#         "statusCode": 200,
-#         "body": f"Access token: {access_token}"
-#     }
-
-
-
-# def save_app_data(logger, settings, event, context):
-#     pass
 
 class BuildContext(object):
     custom_context = None
