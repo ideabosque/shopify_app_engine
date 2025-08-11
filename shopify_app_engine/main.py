@@ -163,18 +163,21 @@ class ShopifyAppEngine(object):
                 app_base_url = self.setting.get("app_base_url")
                 query = urllib.parse.urlencode(shopify_params)
                 redirect_url = f"{app_base_url}?{query}"
-            return {
-                "statusCode": 302,
-                "headers": {
-                    "Location": redirect_url
+            return Utility.json_dumps(
+                {
+                    "statusCode": 302,
+                    "headers": {
+                        "Location": redirect_url
+                    }
                 }
-            }
+            )
         except Exception as e:
-            print("App callback error:", str(e))
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": str(e)})
-            }
+            return Utility.json_dumps(
+                {
+                    "statusCode": 400,
+                    "body": json.dumps({"error": str(e)})
+                }
+            )
 
     def oauth_callback(self, **params):
         try:
@@ -201,10 +204,12 @@ class ShopifyAppEngine(object):
             except Exception as e:
                 self.logger.error(e)
             if access_token is None:
-                return {
-                    "statusCode": 400,
-                    "body": json.dumps({"error": "Failed to get access token."})
-                }
+                return Utility.json_dumps(
+                    {
+                        "statusCode": 400,
+                        "body": json.dumps({"error": "Failed to get access token."})
+                    }
+                )
             query_params["access_token"] = access_token
             query_params["app_id"] = params.get("state")
             app_handler = App(logger=self.logger, **self.setting)
@@ -218,18 +223,21 @@ class ShopifyAppEngine(object):
             }
             query = urllib.parse.urlencode(redirect_params)
             redirect_url = f"{app_base_url}?{query}"
-            return {
-                "statusCode": 302,
-                "headers": {
-                    "Location": redirect_url
+            return Utility.json_dumps(
+                {
+                    "statusCode": 302,
+                    "headers": {
+                        "Location": redirect_url
+                    }
                 }
-            }
+            )
         except Exception as e:
-            print("OAuth callback error:", str(e))
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": str(e)})
-            }
+            return Utility.json_dumps(
+                {
+                    "statusCode": 400,
+                    "body": json.dumps({"error": str(e)})
+                }
+            )
     
 
         
