@@ -172,12 +172,8 @@ class ShopifyAppEngine(object):
                 }
             )
         except Exception as e:
-            return Utility.json_dumps(
-                {
-                    "statusCode": 400,
-                    "body": json.dumps({"error": str(e)})
-                }
-            )
+            self.logger.error(str(e))
+            raise Exception(str(e))
 
     def oauth_callback(self, **params):
         try:
@@ -204,12 +200,10 @@ class ShopifyAppEngine(object):
             except Exception as e:
                 self.logger.error(e)
             if access_token is None:
-                return Utility.json_dumps(
-                    {
-                        "statusCode": 400,
-                        "body": json.dumps({"error": "Failed to get access token."})
-                    }
-                )
+                return {
+                    "statusCode": 400,
+                    "body": json.dumps({"error": "Failed to get access token."})
+                }
             query_params["access_token"] = access_token
             query_params["app_id"] = params.get("state")
             app_handler = App(logger=self.logger, **self.setting)
@@ -232,12 +226,8 @@ class ShopifyAppEngine(object):
                 }
             )
         except Exception as e:
-            return Utility.json_dumps(
-                {
-                    "statusCode": 400,
-                    "body": json.dumps({"error": str(e)})
-                }
-            )
+            self.logger.error(str(e))
+            raise Exception(str(e))
     
 
         
