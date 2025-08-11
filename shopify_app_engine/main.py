@@ -144,11 +144,11 @@ class ShopifyAppEngine(object):
             self.logger.info(shopify_params)
             shop = shopify_params.get("shop")
             app_id = shopify_params.get("app_id")  # default to myapp1
-            config = self.settings.get("app_settings", {}).get(app_id)
+            config = self.setting.get("app_settings", {}).get(app_id)
             if not shop or not config:
                 raise Exception("Missing shop or invalid app_id")
             
-            app_handler = App(logger=self.logger, **self.settings)
+            app_handler = App(logger=self.logger, **self.setting)
             app = app_handler.get_app(app_id, shop)
 
             if app is None:
@@ -160,7 +160,7 @@ class ShopifyAppEngine(object):
                     f"state={app_id}"
                 )
             else:
-                app_base_url = self.settings.get("app_base_url")
+                app_base_url = self.setting.get("app_base_url")
                 query = urllib.parse.urlencode(shopify_params)
                 redirect_url = f"{app_base_url}?{query}"
             return {
