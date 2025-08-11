@@ -26,7 +26,7 @@ def deploy() -> list:
                     "mutation": [],
                     "query": [],
                     "type": "RequestResponse",
-                    "support_methods": ["POST"],
+                    "support_methods": ["POST", "GET"],
                     "is_auth_required": False,
                     "is_graphql": False,
                     "settings": "shopify_app_engine",
@@ -37,7 +37,7 @@ def deploy() -> list:
                     "mutation": [],
                     "query": [],
                     "type": "RequestResponse",
-                    "support_methods": ["POST"],
+                    "support_methods": ["POST", "GET"],
                     "is_auth_required": False,
                     "is_graphql": False,
                     "settings": "shopify_app_engine",
@@ -133,8 +133,8 @@ class ShopifyAppEngine(object):
 
     def app_callback(self, **params):
         try:
-            context = params.get("aws_context", {})
-            event = params.get("aws_event", {})
+            context = params.get("context", {})
+            event = params.get("event", {})
             self.logger.info(event)
             self.logger.info(context)
             params = event.get("queryStringParameters", {})
@@ -177,8 +177,8 @@ class ShopifyAppEngine(object):
 
     def oauth_callback(self, **params):
         try:
-            context = params.get("aws_context", {})
-            event = params.get("aws_event", {})
+            context = params.get("context", {})
+            event = params.get("event", {})
             self.logger.info(event)
             self.logger.info(context)
             params = event.get("queryStringParameters", {})
