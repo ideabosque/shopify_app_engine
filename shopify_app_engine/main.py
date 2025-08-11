@@ -133,16 +133,17 @@ class ShopifyAppEngine(object):
 
     def app_callback(self, **params):
         try:
-            context = params.get("context", {})
-            event = params.get("event", {})
-            self.logger.info(event)
-            self.logger.info(context)
-            params = event.get("queryStringParameters", {})
+            shopify_params = {
+                key: value
+                for key, value in params.items()
+                if key not in ["endpoint_id", "area", "context"]
+            }
+            self.logger.info(shopify_params)
             # custom_contxt = BuildContext(event, context)
             # response = install_handler(self.logger, self.setting, event, custom_contxt)
-            self.logger.info(params)
-            shop = params.get("shop")
-            app_id = params.get("app_id")  # default to myapp1
+            self.logger.info(shopify_params)
+            shop = shopify_params.get("shop")
+            app_id = shopify_params.get("app_id")  # default to myapp1
             config = self.settings.get("app_settings", {}).get(app_id)
             if not shop or not config:
                 raise Exception("Missing shop or invalid app_id")
@@ -160,7 +161,7 @@ class ShopifyAppEngine(object):
                 )
             else:
                 app_base_url = self.settings.get("app_base_url")
-                query = urllib.parse.urlencode(params)
+                query = urllib.parse.urlencode(shopify_params)
                 redirect_url = f"{app_base_url}?{query}"
             return {
                 "statusCode": 302,
@@ -169,7 +170,7 @@ class ShopifyAppEngine(object):
                 }
             }
         except Exception as e:
-            print("OAuth callback error:", str(e))
+            print("App callback error:", str(e))
             return {
                 "statusCode": 400,
                 "body": json.dumps({"error": str(e)})
@@ -177,26 +178,26 @@ class ShopifyAppEngine(object):
 
     def oauth_callback(self, **params):
         try:
-            context = params.get("context", {})
-            event = params.get("event", {})
-            self.logger.info(event)
-            self.logger.info(context)
-            params = event.get("queryStringParameters", {})
-            self.logger.info(params)
-            query_params = {
-                "code": params.get("code"),
-                "hmac": params.get("hmac"),
-                "shop": params.get("shop"),
-                "timestamp": params.get("timestamp"),
-                "host": params.get("host"),
-                "state": params.get("state")
+            shopify_params = {
+                key: value
+                for key, value in params.items()
+                if key not in ["endpoint_id", "area", "context"]
             }
-            shop = params.get("shop")
-            app_id = params.get("state")
+            self.logger.info(shopify_params)
+            query_params = {
+                "code": shopify_params.get("code"),
+                "hmac": shopify_params.get("hmac"),
+                "shop": shopify_params.get("shop"),
+                "timestamp": shopify_params.get("timestamp"),
+                "host": shopify_params.get("host"),
+                "state": shopify_params.get("state")
+            }
+            shop = shopify_params.get("shop")
+            app_id = shopify_params.get("state")
             self.logger.info(query_params)
             access_token = None
             try:
-                access_token = request_token(self.logger, self.settings, query_params)
+                access_token = request_token(self.logger, self.setting, query_params)
             except Exception as e:
                 self.logger.error(e)
             if access_token is None:
@@ -206,10 +207,10 @@ class ShopifyAppEngine(object):
                 }
             query_params["access_token"] = access_token
             query_params["app_id"] = params.get("state")
-            app_handler = App(logger=self.logger, **self.settings)
+            app_handler = App(logger=self.logger, **self.setting)
             app_handler.install_app(**query_params)
-            config = self.settings.get("app_settings", {}).get(app_id, {})
-            app_base_url = self.settings.get("app_base_url")
+            config = self.setting.get("app_settings", {}).get(app_id, {})
+            app_base_url = self.setting.get("app_base_url")
             redirect_params = {
                 "shop": shop,
                 "app_id": app_id,
