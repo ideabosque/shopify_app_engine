@@ -139,27 +139,41 @@ class ShopifyAppEngine(object):
                 if key not in ["endpoint_id", "area", "context"]
             }
             self.logger.info(shopify_params)
-            # custom_contxt = BuildContext(event, context)
-            # response = install_handler(self.logger, self.setting, event, custom_contxt)
-            self.logger.info(shopify_params)
             shop = shopify_params.get("shop")
-            app_id = shopify_params.get("app_id")  # default to myapp1
+            app_id = shopify_params.get("app_id")
+            if app_id is None:
+                app_id = shopify_params.get("appId")
             config = self.setting.get("app_settings", {}).get(app_id)
             if not shop or not config:
                 raise Exception("Missing shop or invalid app_id")
             
             app_handler = App(logger=self.logger, **self.setting)
             app = app_handler.get_app(app_id, shop)
-
+            redirect_mode = self.setting.get("redirect_mode", False)
             if app is None:
+                redirect_uri = params.get("redirectUri")
+                if redirect_uri is None:
+                    redirect_uri = config['redirect_uri']
                 redirect_url = (
                     f"https://{shop}/admin/oauth/authorize?"
                     f"client_id={config['client_id']}&"
                     f"scope={config['scopes']}&"
-                    f"redirect_uri={config['redirect_uri']}&"
+                    f"redirect_uri={redirect_uri}&"
                     f"state={app_id}"
                 )
+                if redirect_mode == False:
+                    return Utility.json_dumps(
+                        {
+                            "authUrl": redirect_url
+                        }
+                    )
             else:
+                if redirect_mode == False:
+                    return Utility.json_dumps(
+                        {
+                            "authUrl": None
+                        }
+                    )
                 app_base_url = self.setting.get("app_base_url")
                 query = urllib.parse.urlencode(shopify_params)
                 redirect_url = f"{app_base_url}?{query}"
@@ -208,6 +222,14 @@ class ShopifyAppEngine(object):
             query_params["app_id"] = params.get("state")
             app_handler = App(logger=self.logger, **self.setting)
             app_handler.install_app(**query_params)
+
+            redirect_mode = self.setting.get("redirect_mode", False)
+            if redirect_mode == False:
+                return Utility.json_dumps(
+                    {
+                        "success": True
+                    }
+                )
             config = self.setting.get("app_settings", {}).get(app_id, {})
             app_base_url = self.setting.get("app_base_url")
             redirect_params = {
@@ -227,7 +249,15 @@ class ShopifyAppEngine(object):
             )
         except Exception as e:
             self.logger.error(str(e))
-            raise Exception(str(e))
+            redirect_mode = self.setting.get("redirect_mode", False)
+            if redirect_mode == False:
+                return Utility.json_dumps(
+                    {
+                        "success": False
+                    }
+                )
+            else:
+                raise Exception(str(e))
     
 
         
