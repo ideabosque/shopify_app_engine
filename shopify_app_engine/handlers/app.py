@@ -87,7 +87,6 @@ class App(object):
             setting=self.setting,
             connection_id=self.connection_id,
         )
-        self.logger.info(response)
 
     def install_app(self, **params):
         app_id = params.get("app_id")
@@ -117,7 +116,6 @@ class App(object):
         self.insert_connections(target_id)
         self.insert_endpoint(target_id)
         self.init_config_setting(target_id)
-        self.logger.info(response)
 
     def get_app(self, app_id, shop):
         target_id = self.get_target_id(shop)
@@ -135,7 +133,6 @@ class App(object):
             setting=self.setting,
             connection_id=self.connection_id,
         )
-        self.logger.info(response)
         app = None
         if response["app"] is not None:
             app = response["app"]["accessToken"]
@@ -145,8 +142,6 @@ class App(object):
 
     
     def insert_connections(self, shop):
-        # se-endpoints
-        # se-connections
         default_connections_settings = self.setting.get("default_connections_settings", [])
         if len(default_connections_settings) == 0:
             return
@@ -213,12 +208,9 @@ class App(object):
     def get_config_settings(self, shop):
         replace_module_setting = self.setting.get("replace_function_setting", {"ai_marketing_graphql":"ai_marketing_engine"})
         all_items = []
-        print(shop)
         for function, default_setting_id in replace_module_setting.items():
             setting_id = self.get_setting_id(shop, default_setting_id)
-            print(setting_id)
             items = self.get_config_setting_by_setting_id(setting_id)
-            print(items)
             all_items.extend(items)
 
         return all_items
@@ -229,7 +221,6 @@ class App(object):
             KeyConditionExpression=Key('setting_id').eq(setting_id)
         )
         items = response["Items"]
-        print(items)
         while "LastEvaluatedKey" in response:
             response = configdata_table.query(
                 KeyConditionExpression=Key('setting_id').eq(setting_id),

@@ -15,7 +15,6 @@ def request_token(logger, settings, params):
     config = settings.get("app_settings", {}).get(app_id)
     shopify.Session.setup(api_key=config.get("client_id"), secret=config.get("client_secret"))
     session = shopify.Session(shop, config.get("version", "2025-01"))  # use current API version
-    logger.info(params)
     try:
         access_token = session.request_token(params)
     except Exception as e:
