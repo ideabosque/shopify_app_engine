@@ -20,6 +20,7 @@ setup(
         "SilvaEngine-Utility",
         "graphene",
         "boto3",
+        "shopify_connector"
     ],
     classifiers=[
         "Programming Language :: Python",

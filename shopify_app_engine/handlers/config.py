@@ -4,7 +4,7 @@ from __future__ import print_function
 __author__ = "bibow"
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import boto3
 
@@ -21,6 +21,7 @@ class Config:
     aws_sqs = None
     aws_ddb = None
     schemas = {}
+    apps = {}
 
     @classmethod
     def initialize(cls, logger: logging.Logger, **setting: Dict[str, Any]) -> None:
@@ -105,3 +106,31 @@ class Config:
         return Config.schemas[function_name]
     
     
+    @classmethod
+    def get_app(
+        cls,
+        target_id: str,
+        app_id: Optional[str],
+    ) -> Dict[str, Any]:
+        target_apps = Config.apps.get(target_id, {})
+        
+        if app_id is not None:
+            # 先尝试精确匹配
+            if app_id in target_apps:
+                return target_apps[app_id]
+        return next(iter(target_apps.values()), None)
+    
+    @classmethod
+    def save_app(
+        cls,
+        target_id: str,
+        app_id: Optional[str],
+        app_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        if target_id not in Config.apps:
+            Config.apps[target_id] = {}
+        
+        if app_id not in Config.apps[target_id]:
+            Config.apps[target_id][app_id] = app_data
+        
+        return app_data

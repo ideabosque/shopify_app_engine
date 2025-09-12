@@ -116,12 +116,13 @@ class App(object):
         self.insert_connections(target_id)
         self.insert_endpoint(target_id)
         self.init_config_setting(target_id)
+        self.init_endpoint_config_setting(target_id)
 
     def get_app(self, app_id, shop):
         target_id = self.get_target_id(shop)
         variables = {
             "appId": app_id,
-            "targetId": target_id
+            "targetId": target_id,
         }
         response = self.graphql_schema_utility.execute_graphql_query(
             logger=self.logger,
@@ -135,8 +136,29 @@ class App(object):
         )
         app = None
         if response["app"] is not None:
-            app = response["app"]["accessToken"]
+            app = response["app"]
         return app
+    
+    def get_shop_apps(self, shop):
+        target_id = self.get_target_id(shop)
+        variables = {
+            "targetId": target_id,
+            "platform": self.platform
+        }
+        response = self.graphql_schema_utility.execute_graphql_query(
+            logger=self.logger,
+            endpoint_id=self.app_endpoint_id,
+            function_name="app_core_engine_graphql",
+            operation_name="appList",
+            operation_type="Query",
+            variables=variables,
+            setting=self.setting,
+            connection_id=self.connection_id,
+        )
+        app_list = None
+        if response["appList"] is not None:
+            app_list = response["appList"]["appList"]
+        return app_list
     def get_access_token(self, **params):
         pass
 
@@ -215,6 +237,18 @@ class App(object):
 
         return all_items
     
+    def get_endpoint_config_settings(self, endpoint_id):
+        endpoint_default_setting = self.setting.get("endpoint_default_setting", {})
+        all_items = []
+        for prefix, settings in endpoint_default_setting.items():
+            setting_id = self.get_endpoint_setting_id(prefix, endpoint_id)
+            items = self.get_config_setting_by_setting_id(setting_id)
+            all_items.extend(items)
+
+        return all_items
+    
+    def get_endpoint_setting_id(self, prefix, endpoint_id):
+        return "{prefix}_{endpoint_id}".format(prefix=prefix, endpoint_id=endpoint_id)
     def get_config_setting_by_setting_id(self, setting_id):
         configdata_table = self.aws_ddb.Table("se-configdata")
         response = configdata_table.query(
@@ -264,6 +298,21 @@ class App(object):
                 new_item = dict(item, **{"setting_id": self.get_setting_id(shop, item.get("setting_id"))})
                 batch.put_item(Item=new_item)
 
+    def init_endpoint_config_setting(self, target_id):
+        endpoint_default_setting = self.setting.get("endpoint_default_setting", {})
+        if len(endpoint_default_setting) == 0 or len(self.get_endpoint_config_settings(target_id)) > 0:
+            return
+        endpoint_default_setting = self.setting.get("endpoint_default_setting", {})
+        items = []
+        for prefix, settings in endpoint_default_setting.items():
+            endpoint_setting_id = self.get_endpoint_setting_id(prefix, target_id)
+            for setting in settings:
+                items.append(dict(setting, **{"setting_id": endpoint_setting_id}))
+        configdata_table = self.aws_ddb.Table("se-configdata")
+        with configdata_table.batch_writer() as batch:
+            for item in items:
+                batch.put_item(Item=item)
+
     def get_default_config_settings(self):
         replace_module_setting = self.setting.get("replace_function_setting", {"ai_marketing_graphql":"ai_marketing_engine"})
         all_items = []
@@ -310,3 +359,15 @@ class App(object):
 
 
         return [config_setting for setting_id, config_setting in setting_dict.items()]
+    
+
+    def get_app_by_shop(self, shop, app_id=None):
+        target_id = self.get_target_id(shop)
+        app = Config.get_app(target_id, app_id)
+        if app is not None:
+            return app
+        shop_apps = self.get_shop_apps(shop)
+        for shop_app in shop_apps:
+            Config.save_app(target_id, shop_app["appId"],shop_app)
+
+        return Config.get_app(target_id, app_id)
