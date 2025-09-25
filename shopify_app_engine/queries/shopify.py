@@ -34,6 +34,6 @@ def resolve_product_list(info: ResolveInfo, **kwargs: Dict[str, Any]) -> Product
     formated_products = []
     if products is not None:
         formated_products = [product.to_dict() for product in products]
-    return ProductListType(**Utility.json_loads(Utility.json_dumps({"product_list": formated_products})))
+    return ProductListType(**Utility.json_normalize({"product_list": formated_products}))
 
 

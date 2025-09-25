@@ -41,14 +41,13 @@ class InsertUpdateConfigSetting(Mutation):
             }
             for item in items:
                 config_setting["settings"].append(
-                    VariableType(**Utility.json_loads(Utility.json_dumps({
+                    VariableType(**Utility.json_normalize({
                         "variable": item.get("variable"),
                         "value": item.get("value")
                     }))
-                    )
                 )
             
-            return InsertUpdateConfigSetting(config_setting=ConfigSettingType(**Utility.json_loads(Utility.json_dumps(config_setting))))
+            return InsertUpdateConfigSetting(config_setting=ConfigSettingType(**Utility.json_normalize(config_setting)))
         except Exception as e:
             log = traceback.format_exc()
             info.context.get("logger").error(log)

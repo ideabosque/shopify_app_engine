@@ -29,6 +29,6 @@ def resolve_config_setting_list(info: ResolveInfo, **kwargs: Dict[str, Any]) -> 
 
     config_setting_list = {"config_setting_list": app.formated_config_setting_list(shop, config_settings)}
     
-    return ConfigSettingListType(**Utility.json_loads(Utility.json_dumps(config_setting_list)))
+    return ConfigSettingListType(**Utility.json_normalize(config_setting_list))
 
 
