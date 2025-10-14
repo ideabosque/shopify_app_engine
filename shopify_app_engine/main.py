@@ -58,7 +58,8 @@ def deploy() -> list:
                     "label": "Shopify App Engine GraphQL",
                     "query": [
                         {"action": "ping", "label": "Ping"},
-                        {"action": "configSettingList", "label": "Config Setting List"}
+                        {"action": "configSettingList", "label": "Config Setting List"},
+                        {"action": "customer", "label": "Get Shopify Customer"}
                     ],
                     "mutation": [
                         {

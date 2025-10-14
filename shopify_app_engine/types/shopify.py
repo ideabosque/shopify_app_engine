@@ -4,7 +4,7 @@ from __future__ import print_function
 
 __author__ = "bibow"
 
-from graphene import DateTime, Int, List, ObjectType, String, Union, Float, Field
+from graphene import DateTime, Int, List, ObjectType, String, Union, Float, Field, Boolean
 
 from silvaengine_dynamodb_base import ListObjectType
 from silvaengine_utility import JSON
@@ -23,6 +23,7 @@ class AddressType(ObjectType):
     phone = String()
     province_code = String()
     country_code = String()
+    default = Boolean()
 
 class LineItemType(ObjectType):
     title = String()
@@ -91,6 +92,16 @@ class ProductType(ObjectType):
 class ProductListType(ListObjectType):
     product_list = List(ProductType)
 
+class CustomerType(ObjectType):
+    id = String()
+    email = String()
+    first_name = String()
+    last_name = String()
+    note = String()
+    phone = String()
+    tags = String()
+    addresses = List(AddressType)
+    default_address = Field(AddressType)
 
 # class VariableType(ObjectType):
 #     variable = String()
