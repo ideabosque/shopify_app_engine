@@ -56,7 +56,7 @@ def resolve_customer(info: ResolveInfo, **kwargs: Dict[str, Any]) -> CustomerTyp
     result = shopify_connector.find_customer_by_email(email)
     if result is not None:
         customer = result[0].to_dict()
-        return CustomerType(**Utility.json_loads(Utility.json_dumps(format_customer_data(customer))))
+        return CustomerType(**Utility.json_normalize(format_customer_data(customer)))
     
     customer_data = {
         "email": email,
@@ -67,7 +67,7 @@ def resolve_customer(info: ResolveInfo, **kwargs: Dict[str, Any]) -> CustomerTyp
     }
 
     customer = shopify_connector.create_customer(**customer_data)
-    return CustomerType(**Utility.json_loads(Utility.json_dumps(format_customer_data(customer.to_dict()))))
+    return CustomerType(**Utility.json_normalize(format_customer_data(customer.to_dict())))
 
 
 def format_customer_data(customer_data):
