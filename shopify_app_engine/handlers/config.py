@@ -101,7 +101,7 @@ class Config:
                 function_name,
                 setting=setting,
                 aws_lambda=Config.aws_lambda,
-                test_mode=setting.get("test_mode"),
+                execute_mode=setting.get("execute_mode"),
             )
         return Config.schemas[function_name]
     

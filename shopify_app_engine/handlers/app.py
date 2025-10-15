@@ -29,7 +29,6 @@ class App(object):
 
     ##<--Testing Data-->##
     connection_id = None
-    test_mode = None
 
     app_id = None
     app_endpoint_id = None
@@ -84,7 +83,6 @@ class App(object):
             operation_name="insertUpdateAppConfig",
             operation_type="Mutation",
             variables=variables,
-            setting=self.setting,
             connection_id=self.connection_id,
         )
 
@@ -110,7 +108,6 @@ class App(object):
             operation_name="insertUpdateApp",
             operation_type="Mutation",
             variables=variables,
-            setting=self.setting,
             connection_id=self.connection_id,
         )
         self.insert_connections(target_id)
@@ -131,7 +128,6 @@ class App(object):
             operation_name="app",
             operation_type="Query",
             variables=variables,
-            setting=self.setting,
             connection_id=self.connection_id,
         )
         app = None
@@ -152,7 +148,6 @@ class App(object):
             operation_name="appList",
             operation_type="Query",
             variables=variables,
-            setting=self.setting,
             connection_id=self.connection_id,
         )
         app_list = None

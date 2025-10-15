@@ -31,7 +31,6 @@ class GraphqlSchemaUtility(object):
 
     ##<--Testing Data-->##
     connection_id = None
-    test_mode = None
 
     def __init__(self, logger: logging.Logger, **setting: Dict[str, Any]):
         try:
@@ -68,7 +67,6 @@ class GraphqlSchemaUtility(object):
         ##<--Testing Data-->##
         self.endpoint_id = setting.get("endpoint_id")
         # self.connection_id = setting.get("connection_id")
-        self.test_mode = setting.get("test_mode")
         ##<--Testing Data-->##
 
     def fetch_graphql_schema(
@@ -76,16 +74,15 @@ class GraphqlSchemaUtility(object):
         logger: logging.Logger,
         endpoint_id: str,
         function_name: str,
-        setting: Dict[str, Any] = None,
     ) -> Dict[str, Any]:
         if self.schemas.get(function_name) is None:
             self.schemas[function_name] = Utility.fetch_graphql_schema(
                 logger,
                 endpoint_id,
                 function_name,
-                setting=setting,
+                setting=self.setting,
                 aws_lambda=self.aws_lambda,
-                test_mode=self.test_mode,
+                execute_mode=self.setting.get("execute_mode"),
             )
         return self.schemas[function_name]
 
@@ -98,20 +95,19 @@ class GraphqlSchemaUtility(object):
         operation_name: str,
         operation_type: str,
         variables: Dict[str, Any],
-        setting: Dict[str, Any] = {},
         connection_id: str = None,
     ) -> Dict[str, Any]:
-        schema = self.fetch_graphql_schema(logger, endpoint_id, function_name, setting=setting)
+        schema = self.fetch_graphql_schema(logger, endpoint_id, function_name)
         result = Utility.execute_graphql_query(
             logger,
             endpoint_id,
             function_name,
             Utility.generate_graphql_operation(operation_name, operation_type, schema),
             variables,
-            setting=setting,
+            setting=self.setting,
             aws_lambda=self.aws_lambda,
             connection_id=connection_id,
-            test_mode=self.test_mode,
+            execute_mode=self.setting.get("execute_mode"),
         )
         return result
 
