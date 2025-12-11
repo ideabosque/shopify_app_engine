@@ -9,6 +9,7 @@ import urllib.parse
 from typing import Any, Dict, List
 from graphene import Schema
 from silvaengine_utility import Utility
+from silvaengine_utility import Graphql
 
 from .handlers.config import Config
 from .handlers.app import App
@@ -78,8 +79,9 @@ def deploy() -> list:
         }
     ]
 
-class ShopifyAppEngine(object):
+class ShopifyAppEngine(Graphql):
     def __init__(self, logger, **setting):
+        Graphql.__init__(self, logger, **setting)
 
         Config.initialize(logger, **setting)
 
@@ -92,56 +94,7 @@ class ShopifyAppEngine(object):
             mutation=Mutations,
             types=type_class(),
         )
-        
-        try:
-            context = {
-                "logger": self.logger,
-                "setting": self.setting,
-                "endpoint_id": params.get("endpoint_id"),
-                "connectionId": params.get("connection_id"),
-            }
-
-            if params.get("context"):
-                context = dict(context, **params["context"])
-
-            variables = params.get("variables", {})
-            query = params.get("query")
-            operation_name = params.get("operation_name")
-            response = {
-                "errors": "Invalid operations.",
-                "status_code": 400,
-            }
-
-            if not query:
-                return Utility.json_dumps(response)
-
-            execution_result = schema.execute(
-                query,
-                context_value=context,
-                variable_values=variables,
-                operation_name=operation_name,
-            )
-
-            if execution_result.errors:
-                response = {
-                    "errors": [
-                        Utility.format_error(e) for e in execution_result.errors
-                    ],
-                }
-            elif not execution_result or execution_result.invalid:
-                response = {
-                    "errors": "Invalid execution result.",
-                }
-            elif execution_result.data:
-                response = {"data": execution_result.data, "status_code": 200}
-            else:
-                response = {
-                    "errors": "Uncaught execution error.",
-                }
-
-            return Utility.json_dumps(response)
-        except Exception as e:
-            raise e
+        return self.execute(schema, **params)
 
     def app_check(self, **params):
         try:
