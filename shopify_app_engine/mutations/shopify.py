@@ -8,7 +8,7 @@ from typing import Any, Dict
 
 from graphene import Boolean, Field, Int, Mutation, String
 
-from silvaengine_utility import JSON, Utility
+from silvaengine_utility import JSON
 from ..types.shopify import DraftOrderType
 from ..handlers.app import App
 from ..handlers.config import Config
@@ -31,7 +31,7 @@ class CreateDraftOrder(Mutation):
         try:
             shop = kwargs.get("shop")
             app_id = kwargs.get("app_id")
-            app = App(info.context.get("logger"), **info.context.get("setting"))
+            app = App(info.context, info.context.get("logger"), **info.context.get("setting"))
             app_data = app.get_app_by_shop(shop, app_id)
             if app_data is None:
                 raise Exception("App not found")

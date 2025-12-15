@@ -14,7 +14,7 @@ import boto3
 from boto3.dynamodb.conditions import Attr, Key
 from graphene import ResolveInfo
 
-from silvaengine_utility import Utility
+from silvaengine_utility import Graphql
 from .config import Config
 
 class GraphqlSchemaUtility(object):
@@ -24,7 +24,6 @@ class GraphqlSchemaUtility(object):
     schemas = {}
     logger = None
     setting = {}
-    endpoint_id = None
     coordination_uuid = None
     agent_uuid = None
     retry_limit = 10
@@ -36,7 +35,6 @@ class GraphqlSchemaUtility(object):
         try:
             self._initialize_functs_on_local(setting)
             self._initialize_aws_clients(setting)
-            self._initialize_test_data(setting)
             self.logger = logger
             self.setting = setting
         except Exception as e:
@@ -62,52 +60,35 @@ class GraphqlSchemaUtility(object):
         #     self.aws_lambda = boto3.client("lambda")
         self.aws_lambda = Config.aws_lambda
 
-    def _initialize_test_data(self, setting: Dict[str, Any]) -> None:
-
-        ##<--Testing Data-->##
-        self.endpoint_id = setting.get("endpoint_id")
-        # self.connection_id = setting.get("connection_id")
-        ##<--Testing Data-->##
-
     def fetch_graphql_schema(
         self,
-        logger: logging.Logger,
-        endpoint_id: str,
+        context: Dict[str, Any],
         function_name: str,
     ) -> Dict[str, Any]:
         if self.schemas.get(function_name) is None:
-            self.schemas[function_name] = Utility.fetch_graphql_schema(
-                logger,
-                endpoint_id,
-                function_name,
-                setting=self.setting,
-                aws_lambda=self.aws_lambda,
-                execute_mode=self.setting.get("execute_mode"),
+            self.schemas[function_name] = Graphql.fetch_graphql_schema(
+                context=context,
+                funct=function_name,
+                aws_lambda=self.aws_lambda
             )
         return self.schemas[function_name]
 
 
     def execute_graphql_query(
         self,
-        logger: logging.Logger,
-        endpoint_id: str,
+        context: Dict[str, Any],
         function_name: str,
         operation_name: str,
         operation_type: str,
-        variables: Dict[str, Any],
-        connection_id: str = None,
+        variables: Dict[str, Any]
     ) -> Dict[str, Any]:
-        schema = self.fetch_graphql_schema(logger, endpoint_id, function_name)
-        result = Utility.execute_graphql_query(
-            logger,
-            endpoint_id,
-            function_name,
-            Utility.generate_graphql_operation(operation_name, operation_type, schema),
-            variables,
-            setting=self.setting,
-            aws_lambda=self.aws_lambda,
-            connection_id=connection_id,
-            execute_mode=self.setting.get("execute_mode"),
+        schema = self.fetch_graphql_schema(context, function_name)
+        result = Graphql.execute_graphql_query(
+            context=context,
+            funct=function_name,
+            query=Graphql.generate_graphql_operation(operation_name, operation_type, schema),
+            variables=variables,
+            aws_lambda=self.aws_lambda
         )
         return result
 

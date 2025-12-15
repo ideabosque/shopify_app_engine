@@ -8,7 +8,7 @@ from typing import Any, Dict
 
 from graphene import ResolveInfo
 
-from silvaengine_utility import Utility
+from silvaengine_utility import Serializer
 
 from ..handlers.app import App
 from ..types.shopify import ProductType, VariantProductType, ProductListType, CustomerType
@@ -18,7 +18,7 @@ def resolve_product_list(info: ResolveInfo, **kwargs: Dict[str, Any]) -> Product
     shop = kwargs.get("shop")
     app_id = kwargs.get("app_id")
     attributes = kwargs.get("attributes")
-    app = App(info.context.get("logger"), **info.context.get("setting"))
+    app = App(info.context, info.context.get("logger"), **info.context.get("setting"))
     app_data = app.get_app_by_shop(shop, app_id)
     if app_data is None:
         raise Exception("App not found")
@@ -34,14 +34,14 @@ def resolve_product_list(info: ResolveInfo, **kwargs: Dict[str, Any]) -> Product
     formated_products = []
     if products is not None:
         formated_products = [product.to_dict() for product in products]
-    return ProductListType(**Utility.json_normalize({"product_list": formated_products}))
+    return ProductListType(**Serializer.json_normalize({"product_list": formated_products}))
 
 
 def resolve_customer(info: ResolveInfo, **kwargs: Dict[str, Any]) -> CustomerType:
     shop = kwargs.get("shop")
     app_id = kwargs.get("app_id")
     email = kwargs.get("email")
-    app = App(info.context.get("logger"), **info.context.get("setting"))
+    app = App(info.context, info.context.get("logger"), **info.context.get("setting"))
     app_data = app.get_app_by_shop(shop, app_id)
     if app_data is None:
         raise Exception("App not found")
@@ -56,7 +56,7 @@ def resolve_customer(info: ResolveInfo, **kwargs: Dict[str, Any]) -> CustomerTyp
     result = shopify_connector.find_customer_by_email(email)
     if result is not None:
         customer = result[0].to_dict()
-        return CustomerType(**Utility.json_normalize(format_customer_data(customer)))
+        return CustomerType(**Serializer.json_normalize(format_customer_data(customer)))
     
     customer_data = {
         "email": email,
@@ -67,7 +67,7 @@ def resolve_customer(info: ResolveInfo, **kwargs: Dict[str, Any]) -> CustomerTyp
     }
 
     customer = shopify_connector.create_customer(**customer_data)
-    return CustomerType(**Utility.json_normalize(format_customer_data(customer.to_dict())))
+    return CustomerType(**Serializer.json_normalize(format_customer_data(customer.to_dict())))
 
 
 def format_customer_data(customer_data):

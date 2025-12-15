@@ -2,7 +2,6 @@ import logging
 import os, re, time
 import threading
 import shopify
-from silvaengine_utility import Utility
 
 def request_token(logger, settings, params):
     shop = params.get('shop')

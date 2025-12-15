@@ -13,7 +13,6 @@ import boto3
 from boto3.dynamodb.conditions import Attr, Key
 from graphene import ResolveInfo
 
-from silvaengine_utility import Utility
 from .utils import GraphqlSchemaUtility
 from .config import Config
 
@@ -25,44 +24,30 @@ class App(object):
     schemas = {}
     logger = None
     setting = {}
-    endpoint_id = None
+    context = None
 
     ##<--Testing Data-->##
     connection_id = None
 
     app_id = None
-    app_endpoint_id = None
     graphql_schema_utility = None
 
-    def __init__(self, logger: logging.Logger, **setting: Dict[str, Any]):
+    def __init__(self, context: Dict[str, Any], logger: logging.Logger, **setting: Dict[str, Any]):
         try:
             self._initialize_config(setting)
             self._initialize_aws_services(setting)
             self._initialize_graphql_schema_utility(logger, setting)
             self.logger = logger
             self.setting = setting
+            self.context = context
         except Exception as e:
             log = traceback.format_exc()
-            self.logger.error(log)
+            logger.error(log)
             raise e
     def _initialize_config(self, setting: Dict[str, Any]) -> None:
-        self.endpoint_id = setting.get("endpoint_id")
-        self.app_endpoint_id = setting.get("app_endpoint_id")
+        pass
 
     def _initialize_aws_services(self, setting: Dict[str, Any]) -> None:
-        # if all(
-        #     setting.get(k)
-        #     for k in ["region_name", "aws_access_key_id", "aws_secret_access_key"]
-        # ):
-        #     aws_credentials = {
-        #         "region_name": setting["region_name"],
-        #         "aws_access_key_id": setting["aws_access_key_id"],
-        #         "aws_secret_access_key": setting["aws_secret_access_key"],
-        #     }
-        # else:
-        #     aws_credentials = {}
-
-        # self.aws_ddb = boto3.resource("dynamodb", **aws_credentials)
         self.aws_ddb = Config.aws_ddb
 
     def _initialize_graphql_schema_utility(self, logger: logging.Logger, setting: Dict[str, Any]) -> None:
@@ -77,13 +62,11 @@ class App(object):
             "configuration": config
         }
         response = self.graphql_schema_utility.execute_graphql_query(
-            logger=self.logger,
-            endpoint_id=self.app_endpoint_id,
+            context=self.context,
             function_name="app_core_engine_graphql",
             operation_name="insertUpdateAppConfig",
             operation_type="Mutation",
-            variables=variables,
-            connection_id=self.connection_id,
+            variables=variables
         )
 
     def install_app(self, **params):
@@ -102,18 +85,12 @@ class App(object):
             "status": "installed",
         }
         response = self.graphql_schema_utility.execute_graphql_query(
-            logger=self.logger,
-            endpoint_id=self.app_endpoint_id,
+            context=self.context,
             function_name="app_core_engine_graphql",
             operation_name="insertUpdateApp",
             operation_type="Mutation",
-            variables=variables,
-            connection_id=self.connection_id,
+            variables=variables
         )
-        self.insert_connections(target_id)
-        self.insert_endpoint(target_id)
-        self.init_config_setting(target_id)
-        self.init_endpoint_config_setting(target_id)
 
     def get_app(self, app_id, shop):
         target_id = self.get_target_id(shop)
@@ -122,13 +99,11 @@ class App(object):
             "targetId": target_id,
         }
         response = self.graphql_schema_utility.execute_graphql_query(
-            logger=self.logger,
-            endpoint_id=self.app_endpoint_id,
+            context=self.context,
             function_name="app_core_engine_graphql",
             operation_name="app",
             operation_type="Query",
-            variables=variables,
-            connection_id=self.connection_id,
+            variables=variables
         )
         app = None
         if response["app"] is not None:
@@ -142,13 +117,11 @@ class App(object):
             "platform": self.platform
         }
         response = self.graphql_schema_utility.execute_graphql_query(
-            logger=self.logger,
-            endpoint_id=self.app_endpoint_id,
+            context=self.context,
             function_name="app_core_engine_graphql",
             operation_name="appList",
             operation_type="Query",
-            variables=variables,
-            connection_id=self.connection_id,
+            variables=variables
         )
         app_list = None
         if response["appList"] is not None:
@@ -157,204 +130,9 @@ class App(object):
     def get_access_token(self, **params):
         pass
 
-    
-    def insert_connections(self, shop):
-        default_connections_settings = self.setting.get("default_connections_settings", [])
-        if len(default_connections_settings) == 0:
-            return
-
-        connections_table = self.aws_ddb.Table("se-connections")
-        response = connections_table.query(
-            KeyConditionExpression=Key('endpoint_id').eq(shop),
-            Select='COUNT'
-        )
-        if response["Count"] == len(default_connections_settings):
-            return
-        for connection_setting in default_connections_settings:
-            item = {
-                "endpoint_id": shop,
-                "api_key": connection_setting.get("api_key"),
-                "functions": self.process_setting_in_functions(shop, connection_setting.get("functions")),
-                "whitelist": None
-            }
-            connections_table.put_item(Item=item)
-
-    def process_setting_in_functions(self, shop, functions):
-        new_functions = []
-        replace_module_setting = self.setting.get("replace_function_setting", {"ai_marketing_graphql":"ai_marketing_engine"})
-        for function in functions:
-            if function.get("function") in replace_module_setting:
-                new_functions.append(
-                    dict(function, **{"setting": self.get_setting_id(shop, replace_module_setting[function.get("function")])})
-                )
-            else:
-                new_functions.append(function)
-        return new_functions
-
-    def insert_endpoint(self, shop):
-        endpoints_table = self.aws_ddb.Table("se-endpoints")
-        response = endpoints_table.query(
-            KeyConditionExpression=Key('endpoint_id').eq(shop),
-            Select='COUNT'
-        )
-        if response["Count"] > 0:
-            return
-        item = {
-            "endpoint_id": shop,
-            "code": 0,
-            "special_connection": True
-        }
-        endpoints_table.put_item(Item=item)
-
     def get_target_id(self, shop):
         return shop.replace(".myshopify.com", "")
 
-    def get_setting_id(self, shop, default_setting_id):
-        target_id = self.get_target_id(shop)
-        return "{setting_id}_{target_id}".format(setting_id=default_setting_id, target_id=target_id)
-
-    def vaildate_setting_id(self, shop, setting_id):
-        replace_module_setting = self.setting.get("replace_function_setting", {"ai_marketing_graphql":"ai_marketing_engine"})
-        shop_available_setting_ids = [
-            self.get_setting_id(shop, default_setting_id)
-            for function, default_setting_id in replace_module_setting.items()
-        ]
-        if setting_id not in shop_available_setting_ids:
-            raise Exception(f"{shop} does not have setting_id {setting_id}")
-
-    def get_config_settings(self, shop):
-        replace_module_setting = self.setting.get("replace_function_setting", {"ai_marketing_graphql":"ai_marketing_engine"})
-        all_items = []
-        for function, default_setting_id in replace_module_setting.items():
-            setting_id = self.get_setting_id(shop, default_setting_id)
-            items = self.get_config_setting_by_setting_id(setting_id)
-            all_items.extend(items)
-
-        return all_items
-    
-    def get_endpoint_config_settings(self, endpoint_id):
-        endpoint_default_setting = self.setting.get("endpoint_default_setting", {})
-        all_items = []
-        for prefix, settings in endpoint_default_setting.items():
-            setting_id = self.get_endpoint_setting_id(prefix, endpoint_id)
-            items = self.get_config_setting_by_setting_id(setting_id)
-            all_items.extend(items)
-
-        return all_items
-    
-    def get_endpoint_setting_id(self, prefix, endpoint_id):
-        return "{prefix}_{endpoint_id}".format(prefix=prefix, endpoint_id=endpoint_id)
-    def get_config_setting_by_setting_id(self, setting_id):
-        configdata_table = self.aws_ddb.Table("se-configdata")
-        response = configdata_table.query(
-            KeyConditionExpression=Key('setting_id').eq(setting_id)
-        )
-        items = response["Items"]
-        while "LastEvaluatedKey" in response:
-            response = configdata_table.query(
-                KeyConditionExpression=Key('setting_id').eq(setting_id),
-                ExclusiveStartKey=response["LastEvaluatedKey"]
-            )
-            items.extend(response["Items"])
-        return items
-    
-    def vaildate_config_settings(self, shop, setting_id, settings):
-        replace_module_setting = self.setting.get("replace_function_setting", {"ai_marketing_graphql":"ai_marketing_engine"})
-        matched_function = None
-        for function, default_setting_id in replace_module_setting.items():
-            if setting_id == self.get_setting_id(shop, default_setting_id):
-                matched_function = function
-        if matched_function is None:
-            raise Exception("Invalid setting_id")
-        
-        allow_variables = self.setting.get("allow_edit_variables", {}).get(replace_module_setting.get(matched_function,""), [])
-        if len(allow_variables) > 0:
-            for setting in settings:
-                if setting.get("variable") not in allow_variables:
-                    raise Exception("variable:{variable} is not allowed to update.".format(variable=setting.get("variable")))
-
-    
-    def insert_update_config_settings(self, shop, setting_id, settings):
-        self.vaildate_config_settings(shop, setting_id, settings)
-        configdata_table = self.aws_ddb.Table("se-configdata")
-        with configdata_table.batch_writer() as batch:
-            for item in settings:
-                new_item = dict(item, **{"setting_id": setting_id})
-                batch.put_item(Item=new_item)
-
-    def init_config_setting(self, shop):
-        default_config_settings = self.get_default_config_settings()
-        if len(default_config_settings) == 0 or len(self.get_config_settings(shop)) > 0:
-            return
-        
-        configdata_table = self.aws_ddb.Table("se-configdata")
-        with configdata_table.batch_writer() as batch:
-            for item in default_config_settings:
-                new_item = dict(item, **{"setting_id": self.get_setting_id(shop, item.get("setting_id"))})
-                batch.put_item(Item=new_item)
-
-    def init_endpoint_config_setting(self, target_id):
-        endpoint_default_setting = self.setting.get("endpoint_default_setting", {})
-        if len(endpoint_default_setting) == 0 or len(self.get_endpoint_config_settings(target_id)) > 0:
-            return
-        endpoint_default_setting = self.setting.get("endpoint_default_setting", {})
-        items = []
-        for prefix, settings in endpoint_default_setting.items():
-            endpoint_setting_id = self.get_endpoint_setting_id(prefix, target_id)
-            for setting in settings:
-                items.append(dict(setting, **{"setting_id": endpoint_setting_id}))
-        configdata_table = self.aws_ddb.Table("se-configdata")
-        with configdata_table.batch_writer() as batch:
-            for item in items:
-                batch.put_item(Item=item)
-
-    def get_default_config_settings(self):
-        replace_module_setting = self.setting.get("replace_function_setting", {"ai_marketing_graphql":"ai_marketing_engine"})
-        all_items = []
-        for function, default_setting_id in replace_module_setting.items():
-            items = self.get_config_setting_by_setting_id(default_setting_id)
-            all_items.extend(items)
-
-        return all_items
-    
-    def formated_config_setting_list(self, shop, config_settings):
-        setting_dict = {}
-        
-        for item in config_settings:
-            if item.get("setting_id") not in setting_dict:
-                setting_dict[item.get("setting_id")] = {"setting_id": item.get("setting_id"), "settings": []}
-            setting_dict[item.get("setting_id")]["settings"].append(
-                {
-                    "variable": item.get("variable"),
-                    "value": item.get("value")
-                }
-            )
-        show_variables = self.setting.get("show_variables", {})
-        show_variables_mapping = {}
-        if len(show_variables) > 0:
-            for default_setting_id, variables in show_variables.items():
-                if len(variables) == 0:
-                    continue
-                show_variables_mapping[self.get_setting_id(shop, default_setting_id)] = variables
-        formated_config_settings = []
-        for setting_id, config_setting in setting_dict.items():
-            if len(show_variables_mapping) == 0:
-                formated_config_settings.append(config_setting)
-                continue
-            if setting_id in show_variables_mapping:
-                config_setting["settings"] = [
-                    setting for setting in config_setting["settings"]
-                    if setting.get("variable") in show_variables_mapping[setting_id]
-                ]
-                if len(config_setting["settings"]) > 0:
-                    formated_config_settings.append(config_setting)
-            else:
-                formated_config_settings.append(config_setting)
-            
-
-
-        return [config_setting for setting_id, config_setting in setting_dict.items()]
-    
 
     def get_app_by_shop(self, shop, app_id=None):
         target_id = self.get_target_id(shop)

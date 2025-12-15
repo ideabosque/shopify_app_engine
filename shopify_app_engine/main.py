@@ -8,8 +8,7 @@ import json
 import urllib.parse
 from typing import Any, Dict, List
 from graphene import Schema
-from silvaengine_utility import Utility
-from silvaengine_utility import Graphql
+from silvaengine_utility import Graphql, Serializer
 
 from .handlers.config import Config
 from .handlers.app import App
@@ -89,6 +88,7 @@ class ShopifyAppEngine(Graphql):
         self.setting = setting
     
     def shopify_app_engine_graphql(self, **params: Dict[str, Any]) -> Any:
+        # params["endpoint_id"] = params.get("custom_headers",{}).get("part_id", params.get("endpoint_id"))
         schema = Schema(
             query=Query,
             mutation=Mutations,
@@ -103,7 +103,7 @@ class ShopifyAppEngine(Graphql):
                 for key, value in params.items()
                 if key not in ["endpoint_id", "area", "context"]
             }
-            self.logger.info(shopify_params)
+            # self.logger.info(shopify_params)
             shop = shopify_params.get("shop")
             app_id = shopify_params.get("app_id")
             if app_id is None:
@@ -111,24 +111,31 @@ class ShopifyAppEngine(Graphql):
             config = self.setting.get("app_settings", {}).get(app_id)
             if not shop or not config:
                 raise Exception("Missing shop or invalid app_id")
-            
-            app_handler = App(logger=self.logger, **self.setting)
+            context = {
+                "logger": self.logger,
+                "setting": self.setting,
+                "endpoint_id": params.get("endpoint_id"),
+                "part_id": params.get("part_id"),
+                "connection_id": params.get("connection_id"),
+                "partition_key": params.get("partition_key"),
+            }
+            app_handler = App(context=context, logger=self.logger, **self.setting)
             app = app_handler.get_app(app_id, shop)
             if app is None:
-                return Utility.json_dumps(
+                return Serializer.json_dumps(
                     {
                         "authed": False
                     }
                 )
             else:
-                return Utility.json_dumps(
+                return Serializer.json_dumps(
                     {
                         "authed": True
                     }
                 )
         except Exception as e:
             self.logger.error(str(e))
-            return Utility.json_dumps(
+            return Serializer.json_dumps(
                 {
                     "errors": str(e)
                 }
@@ -150,7 +157,15 @@ class ShopifyAppEngine(Graphql):
             if not shop or not config:
                 raise Exception("Missing shop or invalid app_id")
             
-            app_handler = App(logger=self.logger, **self.setting)
+            context = {
+                "logger": self.logger,
+                "setting": self.setting,
+                "endpoint_id": params.get("endpoint_id"),
+                "part_id": params.get("part_id"),
+                "connection_id": params.get("connection_id"),
+                "partition_key": params.get("partition_key"),
+            }
+            app_handler = App(context=context, logger=self.logger, **self.setting)
             app = app_handler.get_app(app_id, shop)
             if app is None:
                 redirect_url = (
@@ -164,7 +179,7 @@ class ShopifyAppEngine(Graphql):
                 app_base_url = self.setting.get("app_base_url")
                 query = urllib.parse.urlencode(shopify_params)
                 redirect_url = f"{app_base_url}?{query}"
-            return Utility.json_dumps(
+            return Serializer.json_dumps(
                 {
                     "statusCode": 302,
                     "headers": {
@@ -174,7 +189,7 @@ class ShopifyAppEngine(Graphql):
             )
         except Exception as e:
             self.logger.error(str(e))
-            return Utility.json_dumps(
+            return Serializer.json_dumps(
                 {
                     "errors": str(e)
                 }
@@ -187,7 +202,7 @@ class ShopifyAppEngine(Graphql):
                 for key, value in params.items()
                 if key not in ["endpoint_id", "area", "context"]
             }
-            self.logger.info(shopify_params)
+            # self.logger.info(shopify_params)
             query_params = {
                 "code": shopify_params.get("code"),
                 "hmac": shopify_params.get("hmac"),
@@ -211,7 +226,16 @@ class ShopifyAppEngine(Graphql):
                 }
             query_params["access_token"] = access_token
             query_params["app_id"] = params.get("state")
-            app_handler = App(logger=self.logger, **self.setting)
+            
+            context = {
+                "logger": self.logger,
+                "setting": self.setting,
+                "endpoint_id": params.get("endpoint_id"),
+                "part_id": params.get("part_id"),
+                "connection_id": params.get("connection_id"),
+                "partition_key": params.get("partition_key"),
+            }
+            app_handler = App(context=context, logger=self.logger, **self.setting)
             app_handler.install_app(**query_params)
 
             config = self.setting.get("app_settings", {}).get(app_id, {})
@@ -223,7 +247,7 @@ class ShopifyAppEngine(Graphql):
             }
             query = urllib.parse.urlencode(redirect_params)
             redirect_url = f"{app_base_url}?{query}"
-            return Utility.json_dumps(
+            return Serializer.json_dumps(
                 {
                     "statusCode": 302,
                     "headers": {
@@ -233,7 +257,7 @@ class ShopifyAppEngine(Graphql):
             )
         except Exception as e:
             self.logger.error(str(e))
-            return Utility.json_dumps(
+            return Serializer.json_dumps(
                 {
                     "errors": str(e)
                 }
