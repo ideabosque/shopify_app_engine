@@ -88,13 +88,15 @@ class ShopifyAppEngine(Graphql):
         self.setting = setting
     
     def shopify_app_engine_graphql(self, **params: Dict[str, Any]) -> Any:
-        # params["endpoint_id"] = params.get("custom_headers",{}).get("part_id", params.get("endpoint_id"))
-        schema = Schema(
+        return self.execute(self.__class__.build_graphql_schema(), **params)
+
+    @staticmethod
+    def build_graphql_schema() -> Schema:
+        return Schema(
             query=Query,
             mutation=Mutations,
-            types=type_class(),
+            types=type_class()
         )
-        return self.execute(schema, **params)
 
     def app_check(self, **params):
         try:
