@@ -103,7 +103,7 @@ class ShopifyAppEngine(Graphql):
             shopify_params = {
                 key: value
                 for key, value in params.items()
-                if key not in ["endpoint_id", "area", "context"]
+                if key not in ["endpoint_id", "area", "context", "api_key", "metadata"]
             }
             # self.logger.info(shopify_params)
             shop = shopify_params.get("shop")
@@ -148,9 +148,9 @@ class ShopifyAppEngine(Graphql):
             shopify_params = {
                 key: value
                 for key, value in params.items()
-                if key not in ["endpoint_id", "area", "context"]
+                if key not in ["endpoint_id", "area", "context", "api_key", "metadata"]
             }
-            self.logger.info(shopify_params)
+            # self.logger.info(shopify_params)
             shop = shopify_params.get("shop")
             app_id = shopify_params.get("app_id")
             if app_id is None:
@@ -202,7 +202,7 @@ class ShopifyAppEngine(Graphql):
             shopify_params = {
                 key: value
                 for key, value in params.items()
-                if key not in ["endpoint_id", "area", "context"]
+                if key not in ["endpoint_id", "area", "context", "api_key", "metadata"]
             }
             # self.logger.info(shopify_params)
             query_params = {
@@ -215,7 +215,7 @@ class ShopifyAppEngine(Graphql):
             }
             shop = shopify_params.get("shop")
             app_id = shopify_params.get("state")
-            self.logger.info(query_params)
+            # self.logger.info(query_params)
             access_token = None
             try:
                 access_token = request_token(self.logger, self.setting, query_params)

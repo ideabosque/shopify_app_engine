@@ -18,22 +18,11 @@ from silvaengine_utility import Graphql
 from .config import Config
 
 class GraphqlSchemaUtility(object):
-    functs_on_local = None
-    funct_on_local_config = None
-    aws_lambda = None
-    schemas = {}
     logger = None
     setting = {}
-    coordination_uuid = None
-    agent_uuid = None
-    retry_limit = 10
-
-    ##<--Testing Data-->##
-    connection_id = None
 
     def __init__(self, logger: logging.Logger, **setting: Dict[str, Any]):
         try:
-            self._initialize_functs_on_local(setting)
             self._initialize_aws_clients(setting)
             self.logger = logger
             self.setting = setting
@@ -41,55 +30,35 @@ class GraphqlSchemaUtility(object):
             log = traceback.format_exc()
             self.logger.error(log)
             raise e
-    def _initialize_functs_on_local(self, setting: Dict[str, Any]) -> None:
-        self.functs_on_local = setting.get("functs_on_local", {})
-
     def _initialize_aws_clients(self, setting: Dict[str, Any]) -> None:
-        # if (
-        #     setting.get("region_name")
-        #     and setting.get("aws_access_key_id")
-        #     and setting.get("aws_secret_access_key")
-        # ):
-        #     self.aws_lambda = boto3.client(
-        #         "lambda",
-        #         region_name=setting.get("region_name"),
-        #         aws_access_key_id=setting.get("aws_access_key_id"),
-        #         aws_secret_access_key=setting.get("aws_secret_access_key"),
-        #     )
-        # else:
-        #     self.aws_lambda = boto3.client("lambda")
-        self.aws_lambda = Config.aws_lambda
+        pass
 
-    def fetch_graphql_schema(
+    def request_graphql(
         self,
-        context: Dict[str, Any],
+        context: dict[str, Any],
+        module_name: str,
         function_name: str,
-    ) -> Dict[str, Any]:
-        if self.schemas.get(function_name) is None:
-            self.schemas[function_name] = Graphql.fetch_graphql_schema(
+        graphql_operation_type: str,
+        graphql_operation_name: str,
+        class_name: str | None = None,
+        variables: dict[str, Any] = {},
+        query: str = None,
+    ):
+        try:
+            result =  Graphql.request_graphql(
                 context=context,
-                funct=function_name,
-                aws_lambda=self.aws_lambda
+                module_name=module_name,
+                function_name=function_name,
+                graphql_operation_type=graphql_operation_type,
+                graphql_operation_name=graphql_operation_name,
+                class_name=class_name,
+                variables=variables,
+                query=query
             )
-        return self.schemas[function_name]
-
-
-    def execute_graphql_query(
-        self,
-        context: Dict[str, Any],
-        function_name: str,
-        operation_name: str,
-        operation_type: str,
-        variables: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        schema = self.fetch_graphql_schema(context, function_name)
-        result = Graphql.execute_graphql_query(
-            context=context,
-            funct=function_name,
-            query=Graphql.generate_graphql_operation(operation_name, operation_type, schema),
-            variables=variables,
-            aws_lambda=self.aws_lambda
-        )
+        except Exception as e:
+            # log = traceback.format_exc()
+            self.logger.error(e)
+            return None
         return result
 
         

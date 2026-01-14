@@ -18,16 +18,10 @@ from .config import Config
 
 class App(object):
     platform = "shopify"
-    functs_on_local = None
-    funct_on_local_config = None
-    aws_ddb = None
     schemas = {}
     logger = None
     setting = {}
     context = None
-
-    ##<--Testing Data-->##
-    connection_id = None
 
     app_id = None
     graphql_schema_utility = None
@@ -48,7 +42,7 @@ class App(object):
         pass
 
     def _initialize_aws_services(self, setting: Dict[str, Any]) -> None:
-        self.aws_ddb = Config.aws_ddb
+        pass
 
     def _initialize_graphql_schema_utility(self, logger: logging.Logger, setting: Dict[str, Any]) -> None:
         self.graphql_schema_utility = GraphqlSchemaUtility(logger, **setting)
@@ -61,11 +55,13 @@ class App(object):
             "platform": self.platform,
             "configuration": config
         }
-        response = self.graphql_schema_utility.execute_graphql_query(
+        response = self.graphql_schema_utility.request_graphql(
             context=self.context,
+            module_name="app_core_engine",
             function_name="app_core_engine_graphql",
-            operation_name="insertUpdateAppConfig",
-            operation_type="Mutation",
+            graphql_operation_name="insertUpdateAppConfig",
+            graphql_operation_type="Mutation",
+            class_name="AppCoreEngine",
             variables=variables
         )
 
@@ -84,11 +80,13 @@ class App(object):
             "data": dict(params, **config),
             "status": "installed",
         }
-        response = self.graphql_schema_utility.execute_graphql_query(
+        response = self.graphql_schema_utility.request_graphql(
             context=self.context,
+            module_name="app_core_engine",
             function_name="app_core_engine_graphql",
-            operation_name="insertUpdateApp",
-            operation_type="Mutation",
+            graphql_operation_name="insertUpdateApp",
+            graphql_operation_type="Mutation",
+            class_name="AppCoreEngine",
             variables=variables
         )
 
@@ -98,16 +96,20 @@ class App(object):
             "appId": app_id,
             "targetId": target_id,
         }
-        response = self.graphql_schema_utility.execute_graphql_query(
+
+        response = self.graphql_schema_utility.request_graphql(
             context=self.context,
+            module_name="app_core_engine",
             function_name="app_core_engine_graphql",
-            operation_name="app",
-            operation_type="Query",
+            graphql_operation_name="app",
+            graphql_operation_type="Query",
+            class_name="AppCoreEngine",
             variables=variables
         )
+        
         app = None
-        if response["app"] is not None:
-            app = response["app"]
+        if response is not None:
+            app = response
         return app
     
     def get_shop_apps(self, shop):
@@ -116,16 +118,20 @@ class App(object):
             "targetId": target_id,
             "platform": self.platform
         }
-        response = self.graphql_schema_utility.execute_graphql_query(
+
+        response = self.graphql_schema_utility.request_graphql(
             context=self.context,
+            module_name="app_core_engine",
             function_name="app_core_engine_graphql",
-            operation_name="appList",
-            operation_type="Query",
+            graphql_operation_name="appList",
+            graphql_operation_type="Query",
+            class_name="AppCoreEngine",
             variables=variables
         )
+
         app_list = None
-        if response["appList"] is not None:
-            app_list = response["appList"]["appList"]
+        if response is not None and response["appList"] is not None:
+            app_list = response["appList"]
         return app_list
     def get_access_token(self, **params):
         pass

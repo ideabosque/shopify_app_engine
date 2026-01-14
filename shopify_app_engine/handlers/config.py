@@ -17,10 +17,6 @@ class Config:
     Manages shared configuration variables across the application.
     """
 
-    aws_lambda = None
-    aws_sqs = None
-    aws_ddb = None
-    schemas = {}
     apps = {}
 
     @classmethod
@@ -66,39 +62,7 @@ class Config:
             }
         else:
             aws_credentials = {}
-
-        cls.aws_lambda = boto3.client("lambda", **aws_credentials)
-        cls.aws_sqs = boto3.resource("sqs", **aws_credentials)
-        cls.aws_ddb = boto3.resource("dynamodb", **aws_credentials)
-
-
-    # Fetches and caches GraphQL schema for a given function
-    @classmethod
-    def fetch_graphql_schema(
-        cls,
-        context: Dict[str, Any],
-        function_name: str
-    ) -> Dict[str, Any]:
-        """
-        Fetches and caches a GraphQL schema for a given function.
-
-        Args:
-            logger: Logger instance for error reporting
-            endpoint_id: ID of the endpoint to fetch schema from
-            function_name: Name of function to get schema for
-            setting: Optional settings dictionary
-
-        Returns:
-            Dict containing the GraphQL schema
-        """
-        # Check if schema exists in cache, if not fetch and store it
-        if Config.schemas.get(function_name) is None:
-            Config.schemas[function_name] = Graphql.fetch_graphql_schema(
-                context=context,
-                funct=function_name,
-                aws_lambda=Config.aws_lambda
-            )
-        return Config.schemas[function_name]
+        pass
     
     
     @classmethod
