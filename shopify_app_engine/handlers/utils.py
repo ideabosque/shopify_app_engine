@@ -46,7 +46,7 @@ class GraphqlSchemaUtility(object):
     ):
         try:
             result =  Graphql.request_graphql(
-                context=context,
+                context=context.copy(),
                 module_name=module_name,
                 function_name=function_name,
                 graphql_operation_type=graphql_operation_type,
