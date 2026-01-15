@@ -8,7 +8,8 @@ import json
 import urllib.parse
 from typing import Any, Dict, List
 from graphene import Schema
-from silvaengine_utility import Graphql, Serializer
+from silvaengine_utility import Graphql, Serializer, HttpResponse
+from silvaengine_constants import HttpStatus
 
 from .handlers.config import Config
 from .handlers.app import App
@@ -181,12 +182,11 @@ class ShopifyAppEngine(Graphql):
                 app_base_url = self.setting.get("app_base_url")
                 query = urllib.parse.urlencode(shopify_params)
                 redirect_url = f"{app_base_url}?{query}"
-            return Serializer.json_dumps(
-                {
-                    "statusCode": 302,
-                    "headers": {
-                        "Location": redirect_url
-                    }
+            return HttpResponse.format_response(
+                data={},
+                status_code=HttpStatus.FOUND.value,
+                headers={
+                    "Location": redirect_url
                 }
             )
         except Exception as e:
@@ -249,12 +249,11 @@ class ShopifyAppEngine(Graphql):
             }
             query = urllib.parse.urlencode(redirect_params)
             redirect_url = f"{app_base_url}?{query}"
-            return Serializer.json_dumps(
-                {
-                    "statusCode": 302,
-                    "headers": {
-                        "Location": redirect_url
-                    }
+            return HttpResponse.format_response(
+                data={},
+                status_code=HttpStatus.FOUND.value,
+                headers={
+                    "Location": redirect_url
                 }
             )
         except Exception as e:
