@@ -8,8 +8,7 @@ from typing import Any, Dict
 
 from graphene import Boolean, Field, Int, Mutation, String
 
-from silvaengine_utility import JSON
-from ..types.shopify import DraftOrderType
+from silvaengine_utility import JSONCamelCasefrom ..types.shopify import DraftOrderType
 from ..handlers.app import App
 from ..handlers.config import Config
 from shopify_connector import ShopifyConnector
@@ -21,10 +20,10 @@ class CreateDraftOrder(Mutation):
         shop = String(required=True)
         app_id = String(required=False)
         email = String(required=True)
-        line_items = JSON(required=True)
-        shipping_address = JSON(required=True)
-        billing_address = JSON(required=False)
-        # settings = JSON(required=True)
+        line_items = JSONCamelCase(required=True)
+        shipping_address = JSONCamelCase(required=True)
+        billing_address = JSONCamelCase(required=False)
+        # settings = JSONCamelCase(required=True)
 
     @staticmethod
     def mutate(root: Any, info: Any, **kwargs: Dict[str, Any]) -> "CreateDraftOrder":

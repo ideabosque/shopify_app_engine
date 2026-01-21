@@ -21,8 +21,7 @@ from graphene import (
 from .queries.shopify import resolve_product_list, resolve_customer
 from .mutations.shopify import CreateDraftOrder
 from .types.shopify import DraftOrderType, ProductListType, ProductType, VariantProductType, LineItemType, AddressType, CustomerType
-from silvaengine_utility import JSON
-
+from silvaengine_utility import JSONCamelCase
 def type_class():
     return [
         DraftOrderType,
@@ -41,7 +40,7 @@ class Query(ObjectType):
         ProductListType,
         shop=String(required=True),
         app_id=String(required=False),
-        attributes=JSON(required=True)
+        attributes=JSONCamelCase(required=True)
     )
 
     customer = Field(
@@ -52,7 +51,7 @@ class Query(ObjectType):
         first_name=String(required=False),
         last_name=String(required=False),
         phone=String(required=False),
-        address=JSON(required=False)
+        address=JSONCamelCase(required=False)
     )
 
     def resolve_ping(self, info: ResolveInfo) -> str:

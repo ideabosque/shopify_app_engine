@@ -7,8 +7,7 @@ __author__ = "bibow"
 from graphene import DateTime, Int, List, ObjectType, String, Union, Float, Field, Boolean
 
 from silvaengine_dynamodb_base import ListObjectType
-from silvaengine_utility import JSON
-
+from silvaengine_utility import JSONCamelCase
 class AddressType(ObjectType):
     first_name = String()
     last_name = String()
@@ -109,7 +108,7 @@ class CustomerType(ObjectType):
 
 # class ConfigSettingType(ObjectType):
 #     setting_id = String()
-#     settings = List(JSON)
+#     settings = List(JSONCamelCase)
 
 # class ConfigSettingListType(ListObjectType):
 #     config_setting_list = List(ConfigSettingType)
