@@ -8,7 +8,8 @@ from typing import Any, Dict
 
 from graphene import Boolean, Field, Int, Mutation, String
 
-from silvaengine_utility import JSONCamelCasefrom ..types.shopify import DraftOrderType
+from silvaengine_utility import JSONCamelCase
+from ..types.shopify import DraftOrderType
 from ..handlers.app import App
 from ..handlers.config import Config
 from shopify_connector import ShopifyConnector
@@ -48,7 +49,7 @@ class CreateDraftOrder(Mutation):
             billing_address = kwargs.get("billing_address")
             if billing_address is None:
                 billing_address = dict({}, **shipping_address)
-            
+
             draft_order = shopify_connector.create_draft_order(email, line_items, shipping_address, billing_address)
             draft_order_data = draft_order.to_dict()
             return CreateDraftOrder(draft_order=draft_order_data)
@@ -56,4 +57,3 @@ class CreateDraftOrder(Mutation):
             log = traceback.format_exc()
             info.context.get("logger").error(log)
             raise e
-
