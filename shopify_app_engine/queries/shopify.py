@@ -67,6 +67,9 @@ def resolve_customer(info: ResolveInfo, **kwargs: Dict[str, Any]) -> CustomerTyp
     }
 
     customer = shopify_connector.create_customer(**customer_data)
+    if customer is None:
+        raise Exception("Failed to create customer")
+    
     return CustomerType(**Serializer.json_normalize(format_customer_data(customer.to_dict())))
 
 
