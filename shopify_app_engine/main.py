@@ -13,7 +13,7 @@ from silvaengine_constants import HttpStatus
 
 from .handlers.config import Config
 from .handlers.app import App
-from .handlers.shopify import request_token
+from .handlers.shopify import request_token, get_active_subscriptions
 from .schema import Mutations, Query, type_class
 def deploy() -> list:
     return [
@@ -131,11 +131,30 @@ class ShopifyAppEngine(Graphql):
                     }
                 )
             else:
-                return Serializer.json_dumps(
-                    {
-                        "authed": True
-                    }
-                )
+                
+                result = {
+                    "authed": True,
+                    "subscription_required": config.get("subscription_required", True),
+                    "app_subscription": {},
+                    "quotas": {},
+                }
+                if config.get("subscription_required", True):
+                    active_subscriptions = get_active_subscriptions(logger=self.logger, shop=shop, app_data=app)
+                    if active_subscriptions is None or len(active_subscriptions) == 0:
+                        result["app_subscription"]["active"] = False
+                    else:
+                        active_subscription = active_subscriptions[0]
+                        plan_code = self.setting.get("shopify_plan_mapping", {}).get(active_subscription.get("name"))
+                        result["app_subscription"] = {
+                            "active": True if active_subscription.get("status") == "ACTIVE" else False,
+                            "plan_name": active_subscription.get("name"),
+                            "plan_code": plan_code,
+                            "status": active_subscription.get("status"),
+                            "current_period_end": active_subscription.get("currentPeriodEnd"),
+                        }
+                        result["quotas"] = self.setting.get("shopify_plan_quotas", {}).get(plan_code, {})
+
+                return Serializer.json_dumps(result)
         except Exception as e:
             self.logger.error(str(e))
             return Serializer.json_dumps(
