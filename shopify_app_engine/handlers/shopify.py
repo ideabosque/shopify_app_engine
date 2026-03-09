@@ -2,6 +2,7 @@ import logging
 import os, re, time
 import threading
 import shopify
+from shopify_connector import ShopifyConnector
 
 def request_token(logger, settings, params):
     shop = params.get('shop')
@@ -22,7 +23,16 @@ def request_token(logger, settings, params):
         raise Exception(str(e))
     return access_token
 
+def get_active_subscriptions(logger, shop, app_data):
+    app_setting = {
+        "shop_url": shop,
+        "api_version": app_data.get("appConfig",{}).get("configruation",{}).get("version", "2025-01"),
+        "private_app_password": app_data.get("accessToken")
+    }
+    shopify_connector = ShopifyConnector(logger, **app_setting)
+    return shopify_connector.get_active_subscriptions()
 
+    
 class BuildContext(object):
     custom_context = None
     function_name = None
