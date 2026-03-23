@@ -10,6 +10,7 @@ from typing import Any, Dict, List
 from graphene import Schema
 from silvaengine_utility import Graphql, Serializer, HttpResponse
 from silvaengine_constants import HttpStatus
+from silvaengine_dynamodb_base import BaseModel
 
 from .handlers.config import Config
 from .handlers.app import App
@@ -54,6 +55,17 @@ def deploy() -> list:
                     "is_graphql": False,
                     "settings": "shopify_app_engine",
                 },
+                "shopify_webhook": {
+                    "is_static": False,
+                    "label": "Shopify Webhook",
+                    "mutation": [],
+                    "query": [],
+                    "type": "RequestResponse",
+                    "support_methods": ["POST", "GET"],
+                    "is_auth_required": False,
+                    "is_graphql": False,
+                    "settings": "shopify_app_engine",
+                },
                 "shopify_app_engine_graphql": {
                     "is_static": False,
                     "label": "Shopify App Engine GraphQL",
@@ -83,13 +95,93 @@ class ShopifyAppEngine(Graphql):
     def __init__(self, logger, **setting):
         Graphql.__init__(self, logger, **setting)
 
+        if (
+            setting.get("region_name")
+            and setting.get("aws_access_key_id")
+            and setting.get("aws_secret_access_key")
+        ):
+            BaseModel.Meta.region = setting.get("region_name")
+            BaseModel.Meta.aws_access_key_id = setting.get("aws_access_key_id")
+            BaseModel.Meta.aws_secret_access_key = setting.get("aws_secret_access_key")
+
         Config.initialize(logger, **setting)
 
         self.logger = logger
         self.setting = setting
     
+    def _apply_partition_defaults(self, params: Dict[str, Any]) -> None:
+        """
+        Apply default partition values if not provided in params.
+
+        Args:
+            params (Dict[str, Any]): A dictionary of parameters required to build the GraphQL query.
+        """
+        endpoint_id = params.get("endpoint_id", self.setting.get("endpoint_id"))
+        part_id = params.get("metadata", {}).get(
+            "part_id",
+            params.get("part_id", self.setting.get("part_id")),
+        )
+
+        if params.get("context") is None:
+            params["context"] = {}
+
+        if "endpoint_id" not in params["context"]:
+            params["context"]["endpoint_id"] = endpoint_id
+        if "part_id" not in params["context"]:
+            params["context"]["part_id"] = part_id
+        if "connection_id" not in params:
+            params["connection_id"] = self.setting.get("connection_id")
+
+        if "partition_key" not in params["context"]:
+            # Validate endpoint_id and part_id before creating partition_key
+            if not endpoint_id or not part_id:
+                self.logger.error(
+                    f"Missing endpoint_id or part_id: endpoint_id={endpoint_id}, part_id={part_id}"
+                )
+                raise ValueError(
+                    "Both 'endpoint_id' and 'part_id' are required to generate 'partition_key'."
+                )
+            else:
+                params["context"]["partition_key"] = f"{endpoint_id}#{part_id}"
+                
     def shopify_app_engine_graphql(self, **params: Dict[str, Any]) -> Any:
+        self._apply_partition_defaults(params)
         return self.execute(self.__class__.build_graphql_schema(), **params)
+
+    def _apply_partition_defaults(self, params: Dict[str, Any]) -> None:
+        """
+        Apply default partition values if not provided in params.
+
+        Args:
+            params (Dict[str, Any]): A dictionary of parameters required to build the GraphQL query.
+        """
+        endpoint_id = params.get("endpoint_id", self.setting.get("endpoint_id"))
+        part_id = params.get("metadata", {}).get(
+            "part_id",
+            params.get("part_id", self.setting.get("part_id")),
+        )
+
+        if params.get("context") is None:
+            params["context"] = {}
+
+        if "endpoint_id" not in params["context"]:
+            params["context"]["endpoint_id"] = endpoint_id
+        if "part_id" not in params["context"]:
+            params["context"]["part_id"] = part_id
+        if "connection_id" not in params:
+            params["connection_id"] = self.setting.get("connection_id")
+
+        if "partition_key" not in params["context"]:
+            # Validate endpoint_id and part_id before creating partition_key
+            if not endpoint_id or not part_id:
+                self.logger.error(
+                    f"Missing endpoint_id or part_id: endpoint_id={endpoint_id}, part_id={part_id}"
+                )
+                raise ValueError(
+                    "Both 'endpoint_id' and 'part_id' are required to generate 'partition_key'."
+                )
+            else:
+                params["context"]["partition_key"] = f"{endpoint_id}#{part_id}"
 
     @staticmethod
     def build_graphql_schema() -> Schema:
@@ -140,6 +232,7 @@ class ShopifyAppEngine(Graphql):
                 }
                 if config.get("subscription_required", True):
                     active_subscriptions = get_active_subscriptions(logger=self.logger, shop=shop, app_data=app)
+                    print(active_subscriptions)
                     if active_subscriptions is None or len(active_subscriptions) == 0:
                         result["app_subscription"]["active"] = False
                     else:
@@ -282,6 +375,15 @@ class ShopifyAppEngine(Graphql):
                     "errors": str(e)
                 }
             )
+        
+    def shopify_webhook(self, **params):
+        self.logger.info(params)
+
+        return HttpResponse.format_response(
+            data={},
+            status_code=HttpStatus.OK.value
+        )
+
     
 
         
