@@ -208,14 +208,12 @@ class ShopifyAppEngine(Graphql):
             config = self.setting.get("app_settings", {}).get(app_id)
             if not shop or not config:
                 raise Exception("Missing shop or invalid app_id")
-            context = {
+            self._apply_partition_defaults(params)
+            context = params.get("context")
+            context = dict(context, **{
                 "logger": self.logger,
-                "setting": self.setting,
-                "endpoint_id": params.get("endpoint_id"),
-                "part_id": params.get("part_id"),
-                "connection_id": params.get("connection_id"),
-                "partition_key": params.get("partition_key"),
-            }
+                "setting": self.setting
+            })
             app_handler = App(context=context, logger=self.logger, **self.setting)
             app = app_handler.get_app(app_id, shop)
             if app is None:
@@ -233,14 +231,14 @@ class ShopifyAppEngine(Graphql):
                     "quotas": {},
                 }
                 if config.get("subscription_required", True):
-                    active_subscription = get_active_subscription(self.logger, self.setting, shop, app)
+                    active_subscription = get_active_subscription(context, shop, app)
                     if active_subscription is None:
                         result["app_subscription"]["active"] = False
                     else:
                         # plan_code = self.setting.get("shopify_plan_mapping", {}).get(active_subscription.get("name"))
                         result["app_subscription"] = {
                             "active": True if active_subscription.get("status") == "ACTIVE" else False,
-                            "plan_name": active_subscription.get("name"),
+                            "plan_name": active_subscription.get("plan_name"),
                             "plan_code": active_subscription.get("plan_code"),
                             "status": active_subscription.get("status"),
                             "current_period_end": active_subscription.get("current_period_end"),

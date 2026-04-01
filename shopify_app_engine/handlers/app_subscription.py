@@ -2,23 +2,25 @@ from shopify_connector import ShopifyConnector
 from silvaengine_utility import Serializer
 from ..models.app_subscription import insert_update_app_subscription, get_active_app_subscription, get_app_subscription
 from ..handlers.usage_limit import process_usage_limit
+from ..handlers.app import App
 from datetime import datetime
-def get_active_subscription(logger, setting, shop, app_data):
+def get_active_subscription(context, shop_domain, app_data):
+    shop = App.get_target_id(shop_domain)
     app_subscription = get_active_app_subscription(shop)
     if app_subscription is None:
         app_setting = {
-            "shop_url": shop,
+            "shop_url": shop_domain,
             "api_version": app_data.get("appConfig",{}).get("configruation",{}).get("version", "2026-01"),
             "private_app_password": app_data.get("accessToken")
         }
-        shopify_connector = ShopifyConnector(logger, **app_setting)
+        shopify_connector = ShopifyConnector(context.get("logger"), **app_setting)
         active_subscriptions = shopify_connector.get_active_subscriptions()
         if active_subscriptions is None or len(active_subscriptions) == 0:
             return None
         else:
             active_subscription = active_subscriptions[0]
             app_subscription = active_subscription
-            process_subscription(logger, setting, shop, active_subscription, False)
+            process_subscription(context, app_data, shop, active_subscription, False)
             app_subscription = get_active_app_subscription(shop)
     if app_subscription is not None:
         return app_subscription.__dict__["attribute_values"]
