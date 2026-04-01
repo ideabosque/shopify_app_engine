@@ -15,6 +15,8 @@ from silvaengine_dynamodb_base import BaseModel
 from .handlers.config import Config
 from .handlers.app import App
 from .handlers.shopify import request_token, get_active_subscriptions
+from .handlers.app_subscription import get_active_subscription
+from .handlers.webhook import register_webhook, handle_webhook
 from .schema import Mutations, Query, type_class
 def deploy() -> list:
     return [
@@ -231,21 +233,20 @@ class ShopifyAppEngine(Graphql):
                     "quotas": {},
                 }
                 if config.get("subscription_required", True):
-                    active_subscriptions = get_active_subscriptions(logger=self.logger, shop=shop, app_data=app)
-                    print(active_subscriptions)
-                    if active_subscriptions is None or len(active_subscriptions) == 0:
+                    active_subscription = get_active_subscription(self.logger, self.setting, shop, app)
+                    if active_subscription is None:
                         result["app_subscription"]["active"] = False
                     else:
-                        active_subscription = active_subscriptions[0]
-                        plan_code = self.setting.get("shopify_plan_mapping", {}).get(active_subscription.get("name"))
+                        # plan_code = self.setting.get("shopify_plan_mapping", {}).get(active_subscription.get("name"))
                         result["app_subscription"] = {
                             "active": True if active_subscription.get("status") == "ACTIVE" else False,
                             "plan_name": active_subscription.get("name"),
-                            "plan_code": plan_code,
+                            "plan_code": active_subscription.get("plan_code"),
                             "status": active_subscription.get("status"),
-                            "current_period_end": active_subscription.get("currentPeriodEnd"),
+                            "current_period_end": active_subscription.get("current_period_end"),
+                            # "quotas": active_subscription.get("quotas"),
                         }
-                        result["quotas"] = self.setting.get("shopify_plan_quotas", {}).get(plan_code, {})
+                        result["quotas"] = active_subscription.get("quotas")
 
                 return Serializer.json_dumps(result)
         except Exception as e:
@@ -292,7 +293,7 @@ class ShopifyAppEngine(Graphql):
                 )
             else:
                 app_base_url = self.setting.get("app_base_url")
-                query = urllib.parse.urlencode(shopify_params)
+                query = urllib.parse.urlencode({"shop": shop})
                 redirect_url = f"{app_base_url}?{query}"
             return HttpResponse.format_response(
                 data={},
@@ -351,7 +352,11 @@ class ShopifyAppEngine(Graphql):
             }
             app_handler = App(context=context, logger=self.logger, **self.setting)
             app_handler.install_app(**query_params)
-
+            try:
+                register_webhook(self.logger, self.setting, app_id, shop, access_token)
+            except Exception as e:
+                self.logger.error(e)
+                pass
             config = self.setting.get("app_settings", {}).get(app_id, {})
             app_base_url = self.setting.get("app_base_url")
             redirect_params = {
@@ -377,12 +382,40 @@ class ShopifyAppEngine(Graphql):
             )
         
     def shopify_webhook(self, **params):
+        from .handlers.webhook import ValueExistException
         self.logger.info(params)
+
+        if params.get("event") is None:
+            self.logger.error("Missing event")
+            return HttpResponse.format_response(
+                data={},
+                status_code=HttpStatus.BAD_REQUEST.value
+            )
+        self.logger.info("start processing handle_webhook")
+        self._apply_partition_defaults(params)
+        context = params.get("context")
+        context = dict(context, **{
+            "logger": self.logger,
+            "setting": self.setting
+        })
+        
+        try:
+            handle_webhook(context, params)
+        except ValueExistException as e:
+            return HttpResponse.format_response(
+                data={},
+                status_code=HttpStatus.OK.value
+            )
+        except Exception as e:
+            self.logger.error(str(e))
+            pass
 
         return HttpResponse.format_response(
             data={},
             status_code=HttpStatus.OK.value
         )
+    
+
 
     
 
