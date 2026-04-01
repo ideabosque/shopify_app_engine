@@ -150,40 +150,6 @@ class ShopifyAppEngine(Graphql):
         self._apply_partition_defaults(params)
         return self.execute(self.__class__.build_graphql_schema(), **params)
 
-    def _apply_partition_defaults(self, params: Dict[str, Any]) -> None:
-        """
-        Apply default partition values if not provided in params.
-
-        Args:
-            params (Dict[str, Any]): A dictionary of parameters required to build the GraphQL query.
-        """
-        endpoint_id = params.get("endpoint_id", self.setting.get("endpoint_id"))
-        part_id = params.get("metadata", {}).get(
-            "part_id",
-            params.get("part_id", self.setting.get("part_id")),
-        )
-
-        if params.get("context") is None:
-            params["context"] = {}
-
-        if "endpoint_id" not in params["context"]:
-            params["context"]["endpoint_id"] = endpoint_id
-        if "part_id" not in params["context"]:
-            params["context"]["part_id"] = part_id
-        if "connection_id" not in params:
-            params["connection_id"] = self.setting.get("connection_id")
-
-        if "partition_key" not in params["context"]:
-            # Validate endpoint_id and part_id before creating partition_key
-            if not endpoint_id or not part_id:
-                self.logger.error(
-                    f"Missing endpoint_id or part_id: endpoint_id={endpoint_id}, part_id={part_id}"
-                )
-                raise ValueError(
-                    "Both 'endpoint_id' and 'part_id' are required to generate 'partition_key'."
-                )
-            else:
-                params["context"]["partition_key"] = f"{endpoint_id}#{part_id}"
 
     @staticmethod
     def build_graphql_schema() -> Schema:
@@ -208,12 +174,13 @@ class ShopifyAppEngine(Graphql):
             config = self.setting.get("app_settings", {}).get(app_id)
             if not shop or not config:
                 raise Exception("Missing shop or invalid app_id")
-            self._apply_partition_defaults(params)
-            context = params.get("context")
-            context = dict(context, **{
+            context = {
                 "logger": self.logger,
-                "setting": self.setting
-            })
+                "setting": self.setting,
+                "endpoint_id": params.get("endpoint_id"),
+                "part_id": App.get_target_id(shop),
+                "partition_key": f"{params.get('endpoint_id')}#{App.get_target_id(shop)}"
+            }
             app_handler = App(context=context, logger=self.logger, **self.setting)
             app = app_handler.get_app(app_id, shop)
             if app is None:
@@ -275,9 +242,8 @@ class ShopifyAppEngine(Graphql):
                 "logger": self.logger,
                 "setting": self.setting,
                 "endpoint_id": params.get("endpoint_id"),
-                "part_id": params.get("part_id"),
-                "connection_id": params.get("connection_id"),
-                "partition_key": params.get("partition_key"),
+                "part_id": App.get_target_id(shop),
+                "partition_key": f"{params.get('endpoint_id')}#{App.get_target_id(shop)}"
             }
             app_handler = App(context=context, logger=self.logger, **self.setting)
             app = app_handler.get_app(app_id, shop)
@@ -344,9 +310,8 @@ class ShopifyAppEngine(Graphql):
                 "logger": self.logger,
                 "setting": self.setting,
                 "endpoint_id": params.get("endpoint_id"),
-                "part_id": params.get("part_id"),
-                "connection_id": params.get("connection_id"),
-                "partition_key": params.get("partition_key"),
+                "part_id": App.get_target_id(shop),
+                "partition_key": f"{params.get('endpoint_id')}#{App.get_target_id(shop)}"
             }
             app_handler = App(context=context, logger=self.logger, **self.setting)
             app_handler.install_app(**query_params)
@@ -390,12 +355,13 @@ class ShopifyAppEngine(Graphql):
                 status_code=HttpStatus.BAD_REQUEST.value
             )
         self.logger.info("start processing handle_webhook")
-        self._apply_partition_defaults(params)
-        context = params.get("context")
-        context = dict(context, **{
+        context = {
             "logger": self.logger,
-            "setting": self.setting
-        })
+            "setting": self.setting,
+            "endpoint_id": params.get("endpoint_id"),
+            # "part_id": App.get_target_id(shop),
+            # "partition_key": f"{params.get('endpoint_id')}#{App.get_target_id(shop)}"
+        }
         
         try:
             handle_webhook(context, params)

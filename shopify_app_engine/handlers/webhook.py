@@ -88,7 +88,8 @@ def handle_webhook(context, params):
     webhook_id = headers.get("x-shopify-webhook-id")
     triggered_at = headers.get("x-shopify-triggered-at")
     shop = App.get_target_id(shop_domain)
-    
+    context["part_id"] = shop
+    context["partition_key"] = f"{context.get('endpoint_id')}#{shop}"
     if get_webhook_event(shop, event_id) is not None:
         raise ValueExistException("Event is already received.")
     webhook_event_params = {
