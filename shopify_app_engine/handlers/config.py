@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional
 import boto3
 
 from silvaengine_utility import Graphql
-
+from ..models import utils
 
 class Config:
     """
@@ -30,6 +30,8 @@ class Config:
         try:
             cls._set_parameters(setting)
             cls._initialize_aws_services(setting)
+            if setting.get("initialize_tables"):
+                cls._initialize_tables(logger)
             logger.info("Configuration initialized successfully.")
         except Exception as e:
             logger.exception("Failed to initialize configuration.")
@@ -64,7 +66,14 @@ class Config:
             aws_credentials = {}
         pass
     
-    
+    @classmethod
+    def _initialize_tables(cls, logger: logging.Logger) -> None:
+        """
+        Initialize database tables by calling the utils._initialize_tables() method.
+        This is an internal method used during configuration setup.
+        """
+        utils._initialize_tables(logger)
+
     @classmethod
     def get_app(
         cls,

@@ -75,7 +75,7 @@ class App(object):
         app_id = params.get("app_id")
         self.install_app_config(app_id)
         config = self.setting.get("app_settings", {}).get(app_id)
-        target_id = self.get_target_id(params.get("shop"))
+        target_id = App.get_target_id(params.get("shop"))
         variables = {
             "appId": params.get("app_id"),
             "targetId": target_id,
@@ -96,8 +96,25 @@ class App(object):
             variables=variables,
         )
 
+    def uninstall_app(self, **params):
+        app_id = params.get("app_id")
+        target_id = App.get_target_id(params.get("shop"))
+        variables = {
+            "appId": app_id,
+            "targetId": target_id
+        }
+        response = self.graphql_schema_utility.request_graphql(
+            context=self.context,
+            module_name="app_core_engine",
+            function_name="app_core_engine_graphql",
+            graphql_operation_name="deleteApp",
+            graphql_operation_type="Mutation",
+            class_name="AppCoreEngine",
+            variables=variables,
+        )
+
     def get_app(self, app_id, shop):
-        target_id = self.get_target_id(shop)
+        target_id = App.get_target_id(shop)
         variables = {
             "appId": app_id,
             "targetId": target_id,
@@ -119,7 +136,7 @@ class App(object):
         return app
 
     def get_shop_apps(self, shop):
-        target_id = self.get_target_id(shop)
+        target_id = App.get_target_id(shop)
         variables = {"targetId": target_id, "platform": self.platform}
 
         response = self.graphql_schema_utility.request_graphql(
@@ -139,12 +156,13 @@ class App(object):
 
     def get_access_token(self, **params):
         pass
-
-    def get_target_id(self, shop):
+    
+    @staticmethod
+    def get_target_id(shop):
         return shop.replace(".myshopify.com", "")
 
     def get_app_by_shop(self, shop, app_id=None):
-        target_id = self.get_target_id(shop)
+        target_id = App.get_target_id(shop)
         app = Config.get_app(target_id, app_id)
         if app is not None:
             return app
