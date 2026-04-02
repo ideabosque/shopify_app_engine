@@ -33,6 +33,7 @@ def process_subscription(context, app_data, shop, app_subscription, is_webhook):
     plan_code = app_subscription.get("plan_handle") if app_subscription.get("plan_handle") else setting.get("shopify_plan_mapping", {}).get(plan_name)
     quotas = setting.get("shopify_plan_quotas", {}).get(plan_code, {})
     status = app_subscription.get("status")
+    # print(app_subscription)
     if is_webhook:
         app_setting = {
             "shop_url": shop,
@@ -41,6 +42,8 @@ def process_subscription(context, app_data, shop, app_subscription, is_webhook):
         }
         shopify_connector = ShopifyConnector(logger, **app_setting)
         app_subscription_node = shopify_connector.get_subscription(app_subscription.get("admin_graphql_api_id"))
+        # print(app_subscription_node)
+    
     created_at = app_subscription_node.get("createdAt") if is_webhook else app_subscription.get("createdAt")
     current_period_end = app_subscription_node.get("currentPeriodEnd") if is_webhook else app_subscription.get("currentPeriodEnd")
 
@@ -55,7 +58,7 @@ def process_subscription(context, app_data, shop, app_subscription, is_webhook):
         "quotas": quotas,
         "subscription_created_at": datetime.strptime(created_at, "%Y-%m-%dT%H:%M:%SZ"),
         "current_period_start": datetime.strptime(created_at, "%Y-%m-%dT%H:%M:%SZ"),
-        "current_period_end": datetime.strptime(current_period_end, "%Y-%m-%dT%H:%M:%SZ"),
+        "current_period_end": datetime.strptime(current_period_end, "%Y-%m-%dT%H:%M:%SZ") if current_period_end is not None else None,
         "trial_days": app_subscription_node.get("trialDays") if is_webhook else app_subscription.get("trialDays"),
         "line_items": app_subscription_node.get("lineItems") if is_webhook else app_subscription.get("lineItems"),
     }
