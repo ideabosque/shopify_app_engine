@@ -97,6 +97,7 @@ def handle_webhook(context, params):
         "event_id": event_id,
         "webhook_data": Serializer.json_loads(event.get("body"), False, False) if event.get("body") is not None else {},
     }
+    
     # print("insert webhook event")
     context.get("logger").info("insert webhook event")
     insert_webhook_event(**webhook_event_params)

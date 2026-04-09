@@ -34,7 +34,6 @@ def process_subscription(context, app_data, shop_domain, app_subscription, is_we
     plan_code = app_subscription.get("plan_handle") if app_subscription.get("plan_handle") else setting.get("shopify_plan_mapping", {}).get(plan_name)
     quotas = setting.get("shopify_plan_quotas", {}).get(plan_code, {})
     status = app_subscription.get("status")
-    # print(app_subscription)
     if is_webhook:
         app_setting = {
             "shop_url": shop_domain,
@@ -43,7 +42,6 @@ def process_subscription(context, app_data, shop_domain, app_subscription, is_we
         }
         shopify_connector = ShopifyConnector(logger, **app_setting)
         app_subscription_node = shopify_connector.get_subscription(app_subscription.get("admin_graphql_api_id"))
-        # print(app_subscription_node)
     
     created_at = app_subscription_node.get("createdAt") if is_webhook else app_subscription.get("createdAt")
     current_period_end = app_subscription_node.get("currentPeriodEnd") if is_webhook else app_subscription.get("currentPeriodEnd")
@@ -90,10 +88,10 @@ def cancel_app_subscription(context, shop):
     setting = context.get("setting")
     app_subscription_params = {
         "shop": shop,
-        "app_subscription_id": app_subscription.get("app_subscription_id"),
+        "app_subscription_id": app_subscription.app_subscription_id,
         "status": "CANCELLED",
     }
     insert_update_app_subscription(**app_subscription_params)
-    existing_app_subscription = get_app_subscription(shop, app_subscription.get("app_subscription_id"))
+    existing_app_subscription = get_app_subscription(shop, app_subscription.app_subscription_id)
 
     process_usage_limit(logger, setting, context.get("partition_key"), existing_app_subscription)

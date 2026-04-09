@@ -4,8 +4,7 @@ from silvaengine_definitions.pynamodb.models.usage import insert_update_usage_li
 def process_usage_limit(logger, setting, partition_key, app_subscription):
     default_usage_keys = ["conversation"]
     usage_keys = list(set(setting.get("avaliable_usage_keys",[]) + default_usage_keys))
-    if app_subscription.status != "ACTIVE":
-        return
+    
     available_status_mapping = {
         "ACTIVE": "ACTIVE",
         "CANCELLED": "CANCELLED"
@@ -23,7 +22,7 @@ def process_usage_limit(logger, setting, partition_key, app_subscription):
         usage_quota = quotas.get(usage_key, {})
         limit_item = get_usage_limit(partition_key, usage_key)
         if limit_item is not None:
-            if app_subscription.current_period_start <= limit_item.period_start:
+            if app_subscription.current_period_start < limit_item.period_start:
                 continue
 
         limit_data = {
@@ -36,4 +35,5 @@ def process_usage_limit(logger, setting, partition_key, app_subscription):
             "created_from": "shopify",
             "status": available_status_mapping[app_subscription.status]
         }
+
         insert_update_usage_limit(**limit_data)
