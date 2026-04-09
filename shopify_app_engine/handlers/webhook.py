@@ -4,7 +4,7 @@ import base64
 from shopify_connector import ShopifyConnector
 from ..models.webhook_subscription import insert_update_webhook_subscription, get_webhook_subscriptions_by_shop, delete_webhook_subscription
 from ..models.webhook_event import insert_webhook_event, get_webhook_event
-from .app_subscription import process_subscription
+from .app_subscription import process_subscription, cancel_app_subscription
 from .app import App
 
 from silvaengine_utility import Serializer
@@ -125,17 +125,20 @@ def handle_webhook(context, params):
     
     if object_type == "app_subscriptions":
         context.get("logger").info("process_subscription")
-        process_subscription(context, app_data, shop, params.get("app_subscription", {}), True)
+        process_subscription(context, app_data, shop_domain, params.get("app_subscription", {}), True)
         return
     
     if object_type == "app":
         if action == "uninstalled":
             uninstall_params = {
                 "shop": shop,
-                "app_id": app_data.get("app_id")
+                "app_id": app_data.get("appId")
             }
-            context.get("logger").info("uninstall app")
+            context.get("logger").info("delete app")
             app_handler.uninstall_app(**uninstall_params)
+            context.get("logger").info("cancel app subscription")
+            cancel_app_subscription(context, shop)
+            context.get("logger").info("delete webhook")
             delete_webhook(context.get("logger"), shop)
 
         return

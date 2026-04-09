@@ -51,7 +51,7 @@ class AppSubscriptionModel(BaseModel):
         table_name = "sae-app_subscriptions"
 
     shop = UnicodeAttribute(hash_key=True)
-    app_app_subscription_id = UnicodeAttribute(range_key=True)
+    app_subscription_id = UnicodeAttribute(range_key=True)
     
     plan_name = UnicodeAttribute()
     plan_code = UnicodeAttribute()
