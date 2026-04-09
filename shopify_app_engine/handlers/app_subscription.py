@@ -26,9 +26,10 @@ def get_active_subscription(context, shop_domain, app_data):
         return app_subscription.__dict__["attribute_values"]
     return app_subscription
 
-def process_subscription(context, app_data, shop, app_subscription, is_webhook):
+def process_subscription(context, app_data, shop_domain, app_subscription, is_webhook):
     logger = context.get("logger")
     setting = context.get("setting")
+    shop = App.get_target_id(shop_domain)
     plan_name = app_subscription.get("name")
     plan_code = app_subscription.get("plan_handle") if app_subscription.get("plan_handle") else setting.get("shopify_plan_mapping", {}).get(plan_name)
     quotas = setting.get("shopify_plan_quotas", {}).get(plan_code, {})
@@ -36,7 +37,7 @@ def process_subscription(context, app_data, shop, app_subscription, is_webhook):
     # print(app_subscription)
     if is_webhook:
         app_setting = {
-            "shop_url": shop,
+            "shop_url": shop_domain,
             "api_version": app_data.get("appConfig",{}).get("configruation",{}).get("version", "2026-01"),
             "private_app_password": app_data.get("accessToken")
         }
@@ -80,3 +81,19 @@ def process_subscription(context, app_data, shop, app_subscription, is_webhook):
     # if status == "ACTIVE":
     #     ## To Do  insert/update usage limit
     #     return
+
+def cancel_app_subscription(context, shop):
+    app_subscription = get_active_app_subscription(shop)
+    if app_subscription is None:
+        return
+    logger = context.get("logger")
+    setting = context.get("setting")
+    app_subscription_params = {
+        "shop": shop,
+        "app_subscription_id": app_subscription.get("app_subscription_id"),
+        "status": "CANCELLED",
+    }
+    insert_update_app_subscription(**app_subscription_params)
+    existing_app_subscription = get_app_subscription(shop, app_subscription.get("app_subscription_id"))
+
+    process_usage_limit(logger, setting, context.get("partition_key"), existing_app_subscription)
