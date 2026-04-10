@@ -3,13 +3,16 @@ import hashlib
 import base64
 from shopify_connector import ShopifyConnector
 from ..models.webhook_subscription import insert_update_webhook_subscription, get_webhook_subscriptions_by_shop, delete_webhook_subscription
-from ..models.webhook_event import insert_webhook_event, get_webhook_event
+from ..models.webhook_event import insert_update_webhook_event, get_webhook_event, increment_webhook_event_retry_count, retry_webhook_event, process_webhook_event, success_webhook_event
 from .app_subscription import process_subscription, cancel_app_subscription
 from .app import App
 
 from silvaengine_utility import Serializer
 
 class ValueExistException(Exception):
+    pass
+
+class RetryException(Exception):
     pass
 
 def verify_shopify_webhook(body, hmac_header, shopify_secret):
@@ -90,17 +93,47 @@ def handle_webhook(context, params):
     shop = App.get_target_id(shop_domain)
     context["part_id"] = shop
     context["partition_key"] = f"{context.get('endpoint_id')}#{shop}"
-    if get_webhook_event(shop, event_id) is not None:
-        raise ValueExistException("Event is already received.")
-    webhook_event_params = {
-        "shop": shop,
-        "event_id": event_id,
-        "webhook_data": Serializer.json_loads(event.get("body"), False, False) if event.get("body") is not None else {},
-    }
+
+
+    webhook_event = get_webhook_event(shop, event_id)
+    retry = False
+    if webhook_event is None:
+        webhook_event_params = {
+            "shop": shop,
+            "event_id": event_id,
+            "status": "RECEIVED", 
+            "webhook_data": Serializer.json_loads(event.get("body"), False, False) if event.get("body") is not None else {},
+        }
+        
+        # print("insert webhook event")
+        context.get("logger").info("insert webhook event")
+        insert_update_webhook_event(**webhook_event_params)
+        webhook_event = get_webhook_event(shop, event_id)
+    else:
+        if webhook_event.status in ["FAILED"]:
+            if webhook_event.retry_count < 3:
+                retry_webhook_event(webhook_event)
+                retry = True
+            else:
+                raise ValueExistException("Event is already failed.")
+            
+        elif webhook_event.status in ["SUCCESS"]:
+            raise ValueExistException("Event is already failed.")
+        else:
+            raise RetryException("Event is completed.")
+            
+
+    # if webhook_event is not None and webhook_event.status in ["SUCCESS"]:
+    #     raise ValueExistException("Event is already received.")
+    # webhook_event_params = {
+    #     "shop": shop,
+    #     "event_id": event_id,
+    #     "webhook_data": Serializer.json_loads(event.get("body"), False, False) if event.get("body") is not None else {},
+    # }
     
     # print("insert webhook event")
-    context.get("logger").info("insert webhook event")
-    insert_webhook_event(**webhook_event_params)
+    # context.get("logger").info("insert webhook event")
+    # insert_update_webhook_event(**webhook_event_params)
 
     app_handler = App(context=context, logger=context.get("logger"), **context.get("setting"))
     app_data = app_handler.get_app_by_shop(shop)
@@ -123,23 +156,32 @@ def handle_webhook(context, params):
     else:
         object_type = topic_arr[0]
         action = topic_arr[1]
-    
-    if object_type == "app_subscriptions":
-        context.get("logger").info("process_subscription")
-        process_subscription(context, app_data, shop_domain, params.get("app_subscription", {}), True)
-        return
-    
-    if object_type == "app":
-        if action == "uninstalled":
-            uninstall_params = {
-                "shop": shop,
-                "app_id": app_data.get("appId")
-            }
-            context.get("logger").info("delete app")
-            app_handler.uninstall_app(**uninstall_params)
-            context.get("logger").info("cancel app subscription")
-            cancel_app_subscription(context, shop)
-            context.get("logger").info("delete webhook")
-            delete_webhook(context.get("logger"), shop)
+    if not retry:
+        process_webhook_event(webhook_event)
 
-        return
+    try:
+        if object_type == "app_subscriptions":
+            context.get("logger").info("process_subscription")
+            process_subscription(context, app_data, shop_domain, params.get("app_subscription", {}), True)
+            # return
+        
+        if object_type == "app":
+            if action == "uninstalled":
+                uninstall_params = {
+                    "shop": shop,
+                    "app_id": app_data.get("appId")
+                }
+                context.get("logger").info("delete app")
+                app_handler.uninstall_app(**uninstall_params)
+                context.get("logger").info("cancel app subscription")
+                cancel_app_subscription(context, shop)
+                context.get("logger").info("delete webhook")
+                delete_webhook(context.get("logger"), shop)
+
+        success_webhook_event(webhook_event)
+        
+    except Exception as e:
+        context.get("logger").error(e)
+        increment_webhook_event_retry_count(webhook_event, str(e))
+        raise RetryException("Fail to process webhook event.")
+    return

@@ -43,6 +43,10 @@ class WebhookEventModel(BaseModel):
     shop = UnicodeAttribute(hash_key=True)
     event_id = UnicodeAttribute(range_key=True)
     
+    status = UnicodeAttribute(default="RECEIVED")
+    retry_count = NumberAttribute(default=0)
+    error_message = UnicodeAttribute(null=True)
+
     webhook_data = MapAttribute()
     ttl = NumberAttribute()
 
@@ -74,20 +78,90 @@ def get_webhook_event_count(shop: str, event_id: str) -> int:
     return WebhookEventModel.count(shop, WebhookEventModel.event_id == event_id)
 
 
-def insert_webhook_event(**kwargs: Dict[str, Any]) -> None:
+def insert_update_webhook_event(**kwargs: Dict[str, Any]) -> None:
 
     shop = kwargs.get("shop")
     event_id = kwargs.get("event_id")
-    cols = {
-        "webhook_data": kwargs.get("webhook_data"),
-        "ttl": int(time.time()) + 48 * 3600,
-        "created_at": pendulum.now("UTC"),
-        "updated_at": pendulum.now("UTC"),
+    entity = get_webhook_event(shop, event_id)
+    if entity is None:
+        cols = {
+            "webhook_data": kwargs.get("webhook_data"),
+            "ttl": int(time.time()) + 48 * 3600,
+            "status": kwargs.get("status", "RECEIVED"),
+            "retry_count": kwargs.get("retry_count", 0),
+            "created_at": pendulum.now("UTC"),
+            "updated_at": pendulum.now("UTC"),
+        }
+
+        WebhookEventModel(
+            shop,
+            event_id,
+            **cols,
+        ).save()
+        return
+    
+    actions = [
+        WebhookEventModel.updated_at.set(pendulum.now("UTC")),
+    ]
+
+    field_map = {
+        "status": WebhookEventModel.status,
+        "error_message": WebhookEventModel.error_message,
     }
 
-    WebhookEventModel(
-        shop,
-        event_id,
-        **cols,
-    ).save()
+    if kwargs.get("increment_retry_count"):
+        actions.append(WebhookEventModel.retry_count.add(1))
+
+    for key, field in field_map.items():
+        if key in kwargs:
+            actions.append(field.set(kwargs[key]))
+
+    entity.update(actions=actions)
     return
+
+def increment_webhook_event_retry_count(entity, error_message) -> None:
+    entity.update(
+        actions=[
+            WebhookEventModel.retry_count.add(1),
+            WebhookEventModel.updated_at.set(pendulum.now("UTC")),
+            WebhookEventModel.status.set("FAILED"),
+            WebhookEventModel.error_message.set(error_message),
+        ],
+        condition=(
+            WebhookEventModel.status == "PROCESSING"
+        )
+    )
+
+def success_webhook_event(entity) -> None:
+    entity.update(
+        actions=[
+            WebhookEventModel.status.set("SUCCESS"),
+            WebhookEventModel.error_message.set(""),
+        ],
+        condition=(
+            WebhookEventModel.status == "PROCESSING"
+        )
+    )
+
+def process_webhook_event(entity) -> None:
+    entity.update(
+        actions=[
+            WebhookEventModel.status.set("PROCESSING"),
+        ],
+        condition=(
+            WebhookEventModel.status == "RECEIVED"
+        )
+    )
+
+def retry_webhook_event(entity) -> None:
+    entity.update(
+        actions=[
+            WebhookEventModel.status.set("PROCESSING"),
+            WebhookEventModel.error_message.set("Retry Webhook"),
+        ],
+        condition=(
+            (WebhookEventModel.status == "RECEIVED") |
+            (WebhookEventModel.status == "FAILED")
+        )
+    )
+    

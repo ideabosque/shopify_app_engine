@@ -36,4 +36,7 @@ def process_usage_limit(logger, setting, partition_key, app_subscription):
             "status": available_status_mapping[app_subscription.status]
         }
 
+        if app_subscription.current_period_end is None:
+            limit_data.pop("period_end")
+
         insert_update_usage_limit(**limit_data)

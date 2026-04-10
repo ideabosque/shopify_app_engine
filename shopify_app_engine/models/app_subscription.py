@@ -57,10 +57,10 @@ class AppSubscriptionModel(BaseModel):
     plan_code = UnicodeAttribute()
     status = UnicodeAttribute()
 
-    interval = UnicodeAttribute()
+    interval = UnicodeAttribute(null=True)
     subscription_created_at = UTCDateTimeAttribute()
     current_period_start = UTCDateTimeAttribute()
-    current_period_end = UTCDateTimeAttribute()
+    current_period_end = UTCDateTimeAttribute(null=True)
     trial_days = NumberAttribute()
     line_items = ListAttribute(of=MapAttribute)
 

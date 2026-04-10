@@ -345,7 +345,8 @@ class ShopifyAppEngine(Graphql):
             )
         
     def shopify_webhook(self, **params):
-        from .handlers.webhook import ValueExistException
+        from .handlers.webhook import ValueExistException, RetryException
+
         self.logger.info(params)
 
         if params.get("event") is None:
@@ -370,9 +371,18 @@ class ShopifyAppEngine(Graphql):
                 data={},
                 status_code=HttpStatus.OK.value
             )
+        except RetryException as e:
+            self.logger.error(str(e))
+            return HttpResponse.format_response(
+                data={"error": str(e)},
+                status_code=HttpStatus.INTERNAL_SERVER_ERROR.value
+            )
         except Exception as e:
             self.logger.error(str(e))
-            pass
+            return HttpResponse.format_response(
+                data={"error": str(e)},
+                status_code=HttpStatus.BAD_REQUEST.value
+            )
 
         return HttpResponse.format_response(
             data={},
